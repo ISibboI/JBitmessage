@@ -38,10 +38,10 @@ public final class Util {
 	public static int getInt(byte[] b) {
 		int i = 0;
 
-		i |= b[0] << 24;
-		i |= b[1] << 16;
-		i |= b[2] << 8;
-		i |= b[3];
+		i |= (b[0] & 0xFF) << 24;
+		i |= (b[1] & 0xFF) << 16;
+		i |= (b[2] & 0xFF) << 8;
+		i |= (b[3] & 0xFF);
 
 		return i;
 	}
@@ -70,14 +70,14 @@ public final class Util {
 	public static long getLong(byte[] b) {
 		long l = 0;
 
-		l |= b[0] << 56;
-		l |= b[1] << 48;
-		l |= b[2] << 40;
-		l |= b[3] << 32;
-		l |= b[4] << 24;
-		l |= b[5] << 16;
-		l |= b[6] << 8;
-		l |= b[7];
+		l |= (b[0] & 0xFF) << 56;
+		l |= (b[1] & 0xFF) << 48;
+		l |= (b[2] & 0xFF) << 40;
+		l |= (b[3] & 0xFF) << 32;
+		l |= (b[4] & 0xFF) << 24;
+		l |= (b[5] & 0xFF) << 16;
+		l |= (b[6] & 0xFF) << 8;
+		l |= (b[7] & 0xFF);
 
 		return l;
 	}

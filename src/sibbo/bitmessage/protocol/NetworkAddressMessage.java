@@ -4,6 +4,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -67,11 +69,14 @@ public class NetworkAddressMessage extends Message {
 		this.ip = ip.getAddress();
 		if (this.ip.length == 4) {
 			byte[] tmpip = new byte[16];
+
 			tmpip[10] = tmpip[11] = -1;
 			tmpip[12] = this.ip[0];
 			tmpip[13] = this.ip[1];
 			tmpip[14] = this.ip[2];
 			tmpip[15] = this.ip[3];
+
+			this.ip = tmpip;
 		}
 
 		byte[] tmpport = Util.getBytes(port);
@@ -102,6 +107,24 @@ public class NetworkAddressMessage extends Message {
 
 		port = new byte[2];
 		readComplete(in, port);
+
+		InetAddress addr = getIp();
+
+		if (addr.isAnyLocalAddress() || addr.isMulticastAddress()) {
+			throw new ParsingException("IP is local or multicast!");
+		}
+
+		boolean isNull = true;
+
+		for (byte b : addr.getAddress()) {
+			if (b != 0) {
+				isNull = false;
+			}
+		}
+
+		if (isNull) {
+			throw new ParsingException("IP is 0");
+		}
 	}
 
 	@Override
@@ -116,8 +139,51 @@ public class NetworkAddressMessage extends Message {
 			b.write(port);
 		} catch (IOException e) {
 			LOG.log(Level.SEVERE, "Could not write bytes!", e);
+			System.exit(1);
 		}
 
 		return b.toByteArray();
+	}
+
+	public int getTime() {
+		return Util.getInt(time);
+	}
+
+	public int getStream() {
+		return Util.getInt(stream);
+	}
+
+	public long getServices() {
+		return Util.getLong(services);
+	}
+
+	public InetAddress getIp() {
+		try {
+			if (isIpv4()) {
+				return InetAddress.getByAddress(Arrays.copyOfRange(ip, 12, 15));
+			} else {
+				return InetAddress.getByAddress(ip);
+			}
+		} catch (UnknownHostException e) {
+			return null;
+		}
+	}
+
+	/**
+	 * Returns true if the ip-address is an IPv4 address, false if it is an IPv6
+	 * address.
+	 * 
+	 * @return True if the ip-address is an IPv4 address, false if it is an IPv6
+	 *         address.
+	 */
+	public boolean isIpv4() {
+		byte[] prefix = new byte[12];
+		prefix[10] = prefix[11] = -1;
+
+		return Arrays.equals(Arrays.copyOf(ip, 12), prefix);
+	}
+
+	public int getPort() {
+		return Util.getInt(new byte[] { 0, 0, port[0], port[1] });
 	}
 }

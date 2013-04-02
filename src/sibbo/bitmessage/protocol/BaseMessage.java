@@ -15,7 +15,7 @@ import sibbo.bitmessage.crypt.Digest;
  * Wraps any kind of message that can be sent over the network.
  * 
  * @author Sebastian Schmidt
- * @version 1.0
+ * @version 1.0System.exit(1);
  * 
  */
 public class BaseMessage extends Message {
@@ -90,7 +90,17 @@ public class BaseMessage extends Message {
 
 	public String getCommand() {
 		try {
-			return new String(command, "ASCII");
+			StringBuilder str = new StringBuilder();
+
+			for (byte b : command) {
+				if (b == 0) {
+					break;
+				}
+
+				str.append(new String(new byte[] { b }, "ASCII"));
+			}
+
+			return str.toString();
 		} catch (UnsupportedEncodingException e) {
 			LOG.log(Level.SEVERE, "ASCII not supported!", e);
 			System.exit(1);
@@ -122,6 +132,7 @@ public class BaseMessage extends Message {
 			b.write(payload);
 		} catch (IOException e) {
 			LOG.log(Level.SEVERE, "Could not write bytes!", e);
+			System.exit(1);
 		}
 
 		return b.toByteArray();
@@ -148,7 +159,7 @@ public class BaseMessage extends Message {
 		}
 
 		if (l > 10 * 1024 * 1024) {
-			throw new ParsingException("The payload is to long: " + l
+			throw new ParsingException("The payload is too long: " + l
 					+ " bytes");
 		}
 
