@@ -1,9 +1,7 @@
 package sibbo.bitmessage.protocol;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -78,67 +76,76 @@ public class UnencryptedMessageDataMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputStream, int)}
+	 * {@link Message#Message(InputBuffer)}
 	 */
-	public UnencryptedMessageDataMessage(InputStream in, int maxLength)
-			throws IOException, ParsingException {
-		super(in, maxLength);
+	public UnencryptedMessageDataMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		super(b);
 	}
 
 	@Override
-	protected void read(InputStream in, int maxLength) throws IOException,
-			ParsingException {
-		long messageVersion = new VariableLengthIntegerMessage(in, maxLength)
-				.getLong();
+	protected void read(InputBuffer b) throws IOException, ParsingException {
+		VariableLengthIntegerMessage messageVersion = new VariableLengthIntegerMessage(
+				b);
+		b = b.getSubBuffer(messageVersion.length());
 
-		if (messageVersion != VERSION) {
+		if (messageVersion.getLong() != VERSION) {
 			throw new ParsingException(
 					"Cannot understand messages of version: " + messageVersion);
 		}
 
-		addressVersion = new VariableLengthIntegerMessage(in, maxLength)
-				.getLong();
+		VariableLengthIntegerMessage vAddressVersion = new VariableLengthIntegerMessage(
+				b);
+		b = b.getSubBuffer(vAddressVersion.length());
+		addressVersion = vAddressVersion.getLong();
 
 		if (!BitMessageAddress.isSupported(addressVersion)) {
 			throw new ParsingException("Unknown address version: "
 					+ addressVersion);
 		}
 
-		stream = new VariableLengthIntegerMessage(in, maxLength).getLong();
-		behavior = new BehaviorMessage(in, maxLength);
+		VariableLengthIntegerMessage vStream = new VariableLengthIntegerMessage(
+				b);
+		b = b.getSubBuffer(vStream.length());
+		stream = vStream.getLong();
 
-		publicSigningKey = new byte[64];
-		readComplete(in, publicSigningKey);
+		behavior = new BehaviorMessage(b);
+		b = b.getSubBuffer(behavior.length());
 
-		publicEncryptionKey = new byte[64];
-		readComplete(in, publicEncryptionKey);
+		publicSigningKey = b.get(0, 64);
 
-		destinationRipe = new byte[20];
-		readComplete(in, destinationRipe);
+		publicEncryptionKey = b.get(64, 64);
 
-		message = new MailMessage(in, maxLength);
+		destinationRipe = b.get(84, 64);
+		b = b.getSubBuffer(148);
 
-		long length = new VariableLengthIntegerMessage(in, maxLength).getLong();
+		message = new MailMessage(b);
+		b = b.getSubBuffer(message.length());
 
-		if (length < 0 || length > maxLength) {
+		VariableLengthIntegerMessage vLength = new VariableLengthIntegerMessage(
+				b);
+		b = b.getSubBuffer(vLength.length());
+		long length = vLength.getLong();
+
+		if (length < 0 || length > b.length()) {
 			throw new ParsingException("The acknowlegment data is too long: "
 					+ length);
 		}
 
-		byte[] acknowledgment = new byte[(int) length];
-		readComplete(in, acknowledgment);
-		ByteArrayInputStream ackIn = new ByteArrayInputStream(acknowledgment);
-		this.acknowledgment = new BaseMessage(ackIn, acknowledgment.length);
+		this.acknowledgment = new BaseMessage(new InputBufferInputStream(
+				b.getSubBuffer(0, (int) length)), (int) length);
+		b = b.getSubBuffer((int) length);
 
-		length = new VariableLengthIntegerMessage(in, maxLength).getLong();
+		vLength = new VariableLengthIntegerMessage(b);
+		b = b.getSubBuffer(vLength.length());
+		length = vLength.getLong();
 
-		if (length < 0 || length > maxLength) {
+		if (length < 0 || length > b.length()) {
 			throw new ParsingException("The signature data is too long: "
 					+ length);
 		}
 
-		signature = new byte[(int) length];
-		readComplete(in, signature);
+		signature = b.get(0, (int) length);
 
 		CryptManager.checkSignature(getBytesWithoutSignature(), signature);
 	}

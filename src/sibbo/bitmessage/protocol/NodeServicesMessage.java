@@ -1,7 +1,6 @@
 package sibbo.bitmessage.protocol;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Objects;
 import java.util.logging.Logger;
 
@@ -35,19 +34,16 @@ public class NodeServicesMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputStream)}
+	 * {@link Message#Message(InputBuffer)}
 	 */
-	public NodeServicesMessage(InputStream in, int maxLength)
-			throws IOException, ParsingException {
-		super(in, maxLength);
+	public NodeServicesMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		super(b);
 	}
 
 	@Override
-	protected void read(InputStream in, int maxLength) throws IOException,
-			ParsingException {
-		byte[] bits = new byte[8];
-		readComplete(in, bits);
-		bitfield = Util.getLong(bits);
+	protected void read(InputBuffer b) throws IOException, ParsingException {
+		bitfield = Util.getLong(b.get(0, 8));
 	}
 
 	@Override
@@ -64,5 +60,9 @@ public class NodeServicesMessage extends Message {
 	 */
 	public boolean isSet(long nodeNetwork) {
 		return (nodeNetwork & bitfield) == nodeNetwork;
+	}
+
+	public int length() {
+		return 8;
 	}
 }

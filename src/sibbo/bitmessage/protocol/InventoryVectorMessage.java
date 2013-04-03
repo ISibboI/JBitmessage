@@ -1,7 +1,6 @@
 package sibbo.bitmessage.protocol;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Objects;
 import java.util.logging.Logger;
 
@@ -34,11 +33,11 @@ public class InventoryVectorMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputStream)}
+	 * {@link Message#Message(InputBuffer)}
 	 */
-	public InventoryVectorMessage(InputStream in, int maxLength)
-			throws IOException, ParsingException {
-		super(in, maxLength);
+	public InventoryVectorMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		super(b);
 	}
 
 	public byte[] getHash() {
@@ -46,10 +45,8 @@ public class InventoryVectorMessage extends Message {
 	}
 
 	@Override
-	protected void read(InputStream in, int maxLength) throws IOException,
-			ParsingException {
-		hash = new byte[32];
-		readComplete(in, hash);
+	protected void read(InputBuffer b) throws IOException, ParsingException {
+		hash = b.get(0, 32);
 	}
 
 	@Override

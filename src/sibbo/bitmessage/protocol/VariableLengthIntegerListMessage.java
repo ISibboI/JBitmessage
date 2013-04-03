@@ -2,7 +2,6 @@ package sibbo.bitmessage.protocol;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,18 +40,18 @@ public class VariableLengthIntegerListMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputStream)}
+	 * {@link Message#Message(InputBuffer)}
 	 */
-	public VariableLengthIntegerListMessage(InputStream in, int maxLength)
-			throws IOException, ParsingException {
-		super(in, maxLength);
+	public VariableLengthIntegerListMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		super(b);
 	}
 
 	@Override
-	protected void read(InputStream in, int maxLength) throws IOException,
-			ParsingException {
+	protected void read(InputBuffer b) throws IOException, ParsingException {
 		VariableLengthIntegerMessage length = new VariableLengthIntegerMessage(
-				in, maxLength);
+				b);
+		b = b.getSubBuffer(length.length());
 		long l = length.getLong();
 
 		if (l > MAX_LENGTH || l < 0) {
@@ -62,7 +61,9 @@ public class VariableLengthIntegerListMessage extends Message {
 		ints = new long[(int) l];
 
 		for (int i = 0; i < l; i++) {
-			ints[i] = new VariableLengthIntegerMessage(in, maxLength).getLong();
+			VariableLengthIntegerMessage v = new VariableLengthIntegerMessage(b);
+			b = b.getSubBuffer(v.length());
+			ints[i] = v.getLong();
 		}
 	}
 

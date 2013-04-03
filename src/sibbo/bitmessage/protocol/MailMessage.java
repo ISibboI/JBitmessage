@@ -1,7 +1,6 @@
 package sibbo.bitmessage.protocol;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.logging.Logger;
 
 import sibbo.bitmessage.Options;
@@ -35,11 +34,10 @@ public class MailMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputStream)}
+	 * {@link Message#Message(InputBuffer)}
 	 */
-	public MailMessage(InputStream in, int maxLength) throws IOException,
-			ParsingException {
-		super(in, maxLength);
+	public MailMessage(InputBuffer b) throws IOException, ParsingException {
+		super(b);
 	}
 
 	/**
@@ -91,22 +89,28 @@ public class MailMessage extends Message {
 	}
 
 	@Override
-	protected void read(InputStream in, int maxLength) throws IOException,
-			ParsingException {
-		VariableLengthIntegerMessage i = new VariableLengthIntegerMessage(in,
-				maxLength);
+	protected void read(InputBuffer b) throws IOException, ParsingException {
+		VariableLengthIntegerMessage i = new VariableLengthIntegerMessage(b);
 		encoding = MessageEncoding.getEncoding(i.getLong());
 
-		long length = new VariableLengthIntegerMessage(in, maxLength).getLong();
+		b = b.getSubBuffer(i.length());
+		long length = new VariableLengthIntegerMessage(b).getLong();
 
 		if (length > Options.getInstance().getMaxMessageLength() || length < 0) {
 			throw new ParsingException("Message too long: " + length);
 		}
+
+		// TODO FINISH
 	}
 
 	@Override
 	public byte[] getBytes() {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	public int length() {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 }

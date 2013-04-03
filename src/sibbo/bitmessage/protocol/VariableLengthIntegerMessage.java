@@ -1,7 +1,6 @@
 package sibbo.bitmessage.protocol;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.logging.Logger;
 
 /**
@@ -30,28 +29,25 @@ public class VariableLengthIntegerMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputStream)}
+	 * {@link Message#Message(InputBuffer)}
 	 */
-	public VariableLengthIntegerMessage(InputStream in, int maxLength)
-			throws IOException, ParsingException {
-		super(in, maxLength);
+	public VariableLengthIntegerMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		super(b);
 	}
 
 	@Override
-	protected void read(InputStream in, int maxLength) throws IOException,
-			ParsingException {
-		int first = in.read();
+	protected void read(InputBuffer b) throws IOException, ParsingException {
+		int first = b.get(0) & 0xFF;
 		byte[] varInt;
 
-		if (first == -1) {
-			throw new IOException("End of stream.");
-		} else if (first < 0xfd) {
+		if (first < 0xfd) {
 			varInt = new byte[] { (byte) first };
 		} else {
-			varInt = new byte[1 << first - 0xfc];
-			readComplete(in, varInt);
+			varInt = b.get(1, 1 << first - 0xfc);
 		}
 
+		// Add a zero prefix to get a length of 8.
 		byte[] tmp = new byte[8];
 
 		for (int i = 0; i < tmp.length; i++) {
@@ -61,6 +57,7 @@ public class VariableLengthIntegerMessage extends Message {
 				tmp[i] = varInt[index];
 			}
 		}
+
 		n = Util.getLong(tmp);
 	}
 
@@ -85,5 +82,17 @@ public class VariableLengthIntegerMessage extends Message {
 
 	public long getLong() {
 		return n;
+	}
+
+	public int length() {
+		if (n >= 0xFFFF_FFFFL || n < 0) {
+			return 9;
+		} else if (n >= 0xFFFF) {
+			return 5;
+		} else if (n >= 0xFD) {
+			return 3;
+		} else {
+			return 1;
+		}
 	}
 }

@@ -1,7 +1,6 @@
 package sibbo.bitmessage.protocol;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Objects;
 import java.util.logging.Logger;
 
@@ -37,19 +36,15 @@ public class BehaviorMessage extends Message {
 	}
 
 	/**
-	 * @link {@link Message#Message(InputStream)}
+	 * @link {@link Message#Message(InputBuffer)}
 	 */
-	public BehaviorMessage(InputStream in, int maxLength) throws IOException,
-			ParsingException {
-		super(in, maxLength);
+	public BehaviorMessage(InputBuffer b) throws IOException, ParsingException {
+		super(b);
 	}
 
 	@Override
-	protected void read(InputStream in, int maxLength) throws IOException,
-			ParsingException {
-		byte[] bits = new byte[4];
-		readComplete(in, bits);
-		bitfield = Util.getInt(bits);
+	protected void read(InputBuffer b) throws IOException, ParsingException {
+		bitfield = Util.getInt(b.get(0, 4));
 	}
 
 	@Override
@@ -66,5 +61,9 @@ public class BehaviorMessage extends Message {
 	 */
 	public boolean isSet(int flags) {
 		return (flags & bitfield) == flags;
+	}
+
+	public int length() {
+		return 4;
 	}
 }

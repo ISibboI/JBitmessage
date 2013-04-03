@@ -2,7 +2,6 @@ package sibbo.bitmessage.protocol;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
@@ -70,28 +69,23 @@ public class NetworkAddressMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputStream)}
+	 * {@link Message#Message(InputBuffer)}
 	 */
-	public NetworkAddressMessage(InputStream in, int maxLength)
-			throws IOException, ParsingException {
-		super(in, maxLength);
+	public NetworkAddressMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		super(b);
 	}
 
 	@Override
-	protected void read(InputStream in, int maxLength) throws IOException,
-			ParsingException {
-		byte[] timeBytes = new byte[4];
-		readComplete(in, timeBytes);
-		time = Util.getInt(timeBytes);
+	protected void read(InputBuffer b) throws IOException, ParsingException {
+		time = Util.getInt(b.get(0, 4));
+		stream = Util.getInt(b.get(4, 4));
+		b = b.getSubBuffer(8);
 
-		byte[] streamBytes = new byte[4];
-		readComplete(in, streamBytes);
-		stream = Util.getInt(streamBytes);
+		services = new NodeServicesMessage(b);
+		b = b.getSubBuffer(services.length());
 
-		services = new NodeServicesMessage(in, maxLength);
-
-		byte[] ipBytes = new byte[16];
-		readComplete(in, ipBytes);
+		byte[] ipBytes = b.get(0, 16);
 
 		try {
 			if (isIpv4(ipBytes)) {
@@ -104,8 +98,7 @@ public class NetworkAddressMessage extends Message {
 			throw new ParsingException("Not an IP: " + Arrays.toString(ipBytes));
 		}
 
-		byte[] portBytes = new byte[2];
-		readComplete(in, portBytes);
+		byte[] portBytes = b.get(16, 2);
 		port = Util.getInt(new byte[] { 0, 0, portBytes[0], portBytes[1] });
 
 		if (ip.isAnyLocalAddress() || ip.isMulticastAddress()) {
@@ -114,8 +107,8 @@ public class NetworkAddressMessage extends Message {
 
 		boolean isNull = true;
 
-		for (byte b : ip.getAddress()) {
-			if (b != 0) {
+		for (byte a : ip.getAddress()) {
+			if (a != 0) {
 				isNull = false;
 			}
 		}

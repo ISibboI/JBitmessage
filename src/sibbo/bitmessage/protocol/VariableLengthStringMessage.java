@@ -2,7 +2,6 @@ package sibbo.bitmessage.protocol;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.Objects;
 import java.util.logging.Level;
@@ -46,25 +45,26 @@ public class VariableLengthStringMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputStream)}
+	 * {@link Message#Message(InputBuffer)}
 	 */
-	public VariableLengthStringMessage(InputStream in, int maxLength)
-			throws IOException, ParsingException {
-		super(in, maxLength);
+	public VariableLengthStringMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		super(b);
 	}
 
 	@Override
-	protected void read(InputStream in, int maxLength) throws IOException,
-			ParsingException {
-		long length = new VariableLengthIntegerMessage(in, maxLength).getLong();
+	protected void read(InputBuffer b) throws IOException, ParsingException {
+		VariableLengthIntegerMessage vLength = new VariableLengthIntegerMessage(
+				b);
+		b = b.getSubBuffer(vLength.length());
+		long length = vLength.getLong();
 
 		if (length > MAX_LENGTH || length < 0) {
 			throw new ParsingException("String is too long. Maximum length is "
 					+ MAX_LENGTH);
 		}
 
-		byte[] bytes = new byte[(int) length];
-		readComplete(in, bytes);
+		byte[] bytes = b.get(0, (int) length);
 
 		try {
 			message = new String(bytes, "UTF-8");

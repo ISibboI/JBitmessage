@@ -1,6 +1,5 @@
 package sibbo.bitmessage.protocol;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,6 +7,7 @@ import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -21,9 +21,16 @@ import sibbo.bitmessage.crypt.Digest;
  * @version 1.0System.exit(1);
  * 
  */
-public class BaseMessage extends Message {
+public class BaseMessage {
 	private static final Logger LOG = Logger.getLogger(BaseMessage.class
 			.getName());
+
+	/** Stores the types that are used to parse the commands */
+	private static final HashMap<String, Class<P2PMessage>> COMMANDS = new HashMap<>();
+
+	static {
+		// TODO Fill COMMANDS
+	}
 
 	/** Identifies the bitmessage protocol. */
 	private byte[] magic = new byte[] { (byte) 0xE9, (byte) 0xBE, (byte) 0xB4,
@@ -62,16 +69,19 @@ public class BaseMessage extends Message {
 		}
 
 		this.payload = payload;
-		this.magic = magic;
 		this.command = command;
 	}
 
 	/**
-	 * {@link Message#NetworkMessage(InputStream)}
+	 * Creates a new base message, parsing the data from in. The message is
+	 * limited to maxLength.
+	 * 
+	 * @param in The input stream to read from.
+	 * @param maxLength The maximum amount of bytes to read from in.
 	 */
 	public BaseMessage(InputStream in, int maxLength) throws IOException,
 			ParsingException {
-		super(in, maxLength);
+		read(in, maxLength);
 	}
 
 	public byte[] getMagic() {
@@ -100,7 +110,6 @@ public class BaseMessage extends Message {
 		return payload;
 	}
 
-	@Override
 	public byte[] getBytes() {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
@@ -135,14 +144,16 @@ public class BaseMessage extends Message {
 		return b.toByteArray();
 	}
 
-	@Override
 	protected void read(InputStream in, int maxLength) throws IOException,
 			ParsingException {
-		magic = new byte[4];
-		readComplete(in, magic);
+		InputBuffer buffer = new InputBuffer(in, 24, 24);
 
-		byte[] ascii = new byte[12];
-		readComplete(in, ascii);
+		if (!Arrays.equals(magic, buffer.get(0, 4))) {
+			throw new ParsingException("Unknown magic bytes: "
+					+ Arrays.toString(buffer.get(0, 4)));
+		}
+
+		byte[] ascii = buffer.get(4, 12);
 
 		StringBuilder str = new StringBuilder();
 
@@ -156,12 +167,9 @@ public class BaseMessage extends Message {
 
 		command = str.toString();
 
-		byte[] lengthBytes = new byte[4];
-		readComplete(in, lengthBytes);
-		length = Util.getInt(lengthBytes);
+		length = Util.getInt(buffer.get(16, 4));
 
-		checksum = new byte[4];
-		readComplete(in, checksum);
+		checksum = buffer.get(20, 4);
 
 		if (length < 0) {
 			throw new ParsingException("The length of the payload is < 0");
@@ -172,14 +180,12 @@ public class BaseMessage extends Message {
 					+ " bytes");
 		}
 
-		byte[] payloadBytes = new byte[length];
-		readComplete(in, payloadBytes);
+		buffer = new InputBuffer(in, 128, length);
+		byte[] payloadBytes = buffer.get(0, length);
 
 		if (!Arrays.equals(checksum, Digest.sha512(payloadBytes, 4))) {
 			throw new ParsingException("Wrong digest for payload!");
 		}
-
-		InputStream payloadIn = new ByteArrayInputStream(payloadBytes);
 
 		try {
 			Class<P2PMessage> cPayload = getPayloadType(command);
@@ -188,13 +194,9 @@ public class BaseMessage extends Message {
 				throw new ParsingException("Unknown command: " + command);
 			}
 
-			Constructor<P2PMessage> constructor = cPayload.getConstructor(
-					InputStream.class, Integer.class);
-			payload = constructor.newInstance(payloadIn, payloadBytes.length);
-
-			if (payloadIn.available() > 0) {
-				throw new ParsingException("The payload contains trash.");
-			}
+			Constructor<P2PMessage> constructor = cPayload
+					.getConstructor(InputBuffer.class);
+			payload = constructor.newInstance(buffer);
 		} catch (NoSuchMethodException e) {
 			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
 					+ " is missing a Constructor(InputStream)!", e);
@@ -222,5 +224,9 @@ public class BaseMessage extends Message {
 				System.exit(1);
 			}
 		}
+	}
+
+	public Class<P2PMessage> getPayloadType(String command) {
+		return COMMANDS.get(command);
 	}
 }

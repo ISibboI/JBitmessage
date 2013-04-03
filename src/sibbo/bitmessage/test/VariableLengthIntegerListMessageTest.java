@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
+import sibbo.bitmessage.protocol.InputBuffer;
 import sibbo.bitmessage.protocol.ParsingException;
 import sibbo.bitmessage.protocol.VariableLengthIntegerListMessage;
 
@@ -30,7 +31,8 @@ public class VariableLengthIntegerListMessageTest {
 		// System.out.println();
 
 		VariableLengthIntegerListMessage b = new VariableLengthIntegerListMessage(
-				new ByteArrayInputStream(a.getBytes()));
+				new InputBuffer(new ByteArrayInputStream(a.getBytes()),
+						a.getBytes().length, a.getBytes().length));
 
 		if (!Arrays.equals(list, b.getContent())) {
 			System.out.println("Different lists: " + Arrays.toString(list)

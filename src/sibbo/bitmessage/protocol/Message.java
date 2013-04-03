@@ -2,17 +2,9 @@ package sibbo.bitmessage.protocol;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.Objects;
 
 public abstract class Message {
-	/** Stores the types that are used to parse the commands */
-	private static final HashMap<String, Class<P2PMessage>> COMMANDS = new HashMap<>();
-
-	static {
-
-	}
-
 	/**
 	 * Creates a new empty NetworkMessage.
 	 */
@@ -27,11 +19,10 @@ public abstract class Message {
 	 * @throws IOException If reading from the given input stream fails.
 	 * @throws ParsingException If parsing the data fails.
 	 */
-	public Message(InputStream in, int maxLength) throws IOException,
-			ParsingException {
-		Objects.requireNonNull(in, "in must not be null!");
+	public Message(InputBuffer b) throws IOException, ParsingException {
+		Objects.requireNonNull(b, "b must not be null!");
 
-		read(in, maxLength);
+		read(b);
 	}
 
 	/**
@@ -42,8 +33,8 @@ public abstract class Message {
 	 * @throws IOException If reading from the given input stream fails.
 	 * @throws ParsingException If parsing the data fails.
 	 */
-	protected abstract void read(InputStream in, int maxLength)
-			throws IOException, ParsingException;
+	protected abstract void read(InputBuffer b) throws IOException,
+			ParsingException;
 
 	/**
 	 * Creates a byte array of containing this message.
@@ -72,9 +63,5 @@ public abstract class Message {
 				offset += length;
 			}
 		}
-	}
-
-	public Class<P2PMessage> getPayloadType(String command) {
-		return COMMANDS.get(command);
 	}
 }
