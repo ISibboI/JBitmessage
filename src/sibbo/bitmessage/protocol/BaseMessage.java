@@ -25,8 +25,9 @@ public class BaseMessage extends Message {
 	private static final Logger LOG = Logger.getLogger(BaseMessage.class
 			.getName());
 
-	/** See protocol specification. */
-	private byte[] magic;
+	/** Identifies the bitmessage protocol. */
+	private byte[] magic = new byte[] { (byte) 0xE9, (byte) 0xBE, (byte) 0xB4,
+			(byte) 0xD9 };
 
 	/** The command of the message. */
 	private String command;
@@ -43,11 +44,10 @@ public class BaseMessage extends Message {
 	/**
 	 * Constructs a new Message with the given parameters.
 	 * 
-	 * @param magic See protocol specification.
 	 * @param command A NULL-padded ASCII string with a length of 12.
 	 * @param payload The payload.
 	 */
-	public BaseMessage(byte[] magic, String command, P2PMessage payload) {
+	public BaseMessage(String command, P2PMessage payload) {
 		Objects.requireNonNull(magic, "magic must not be null.");
 		Objects.requireNonNull(command, "command must not be null.");
 		Objects.requireNonNull(payload, "payload must not be null.");
