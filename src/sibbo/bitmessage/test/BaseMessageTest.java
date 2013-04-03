@@ -2,12 +2,11 @@ package sibbo.bitmessage.test;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
 import sibbo.bitmessage.protocol.BaseMessage;
-import sibbo.bitmessage.protocol.NetworkAddressMessage;
+import sibbo.bitmessage.protocol.P2PMessage;
 import sibbo.bitmessage.protocol.ParsingException;
 
 public class BaseMessageTest {
@@ -17,8 +16,7 @@ public class BaseMessageTest {
 	public static void main(String[] args) throws IOException, ParsingException {
 		byte[] magic = new byte[] { 4, -1, 0, 5 };
 		String command = "Zero";
-		NetworkAddressMessage m = new NetworkAddressMessage(1, 2, 3,
-				InetAddress.getByName("4.5.6.7"), 8);
+		P2PMessage m = null; // TODO Add message here
 
 		BaseMessage b = new BaseMessage(magic, command, m);
 		BaseMessage c = new BaseMessage(new ByteArrayInputStream(b.getBytes()));
@@ -33,13 +31,14 @@ public class BaseMessageTest {
 					+ command);
 		}
 
-		if (!Arrays.equals(b.getPayload(), c.getPayload())) {
+		if (!Arrays
+				.equals(b.getPayload().getBytes(), c.getPayload().getBytes())) {
 			System.out.println("The payloads are different: "
-					+ Arrays.toString(c.getPayload()) + " != "
-					+ Arrays.toString(b.getPayload()));
+					+ Arrays.toString(c.getPayload().getBytes()) + " != "
+					+ Arrays.toString(b.getPayload().getBytes()));
 		}
 
-		if (!Arrays.equals(m.getBytes(), c.getPayload())) {
+		if (!Arrays.equals(m.getBytes(), c.getPayload().getBytes())) {
 			System.out
 					.println("The resulting payload is not equal to the byte representation of the given message.");
 		}

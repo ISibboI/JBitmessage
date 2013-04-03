@@ -19,11 +19,8 @@ public class VariableLengthIntegerListMessage extends Message {
 
 	private static final int MAX_LENGTH = 50_000;
 
-	/** The number of entries in the list. */
-	private VariableLengthIntegerMessage length;
-
-	/** The entries. */
-	private VariableLengthIntegerMessage[] varInts;
+	/** The list. */
+	private long[] ints;
 
 	/**
 	 * Creates a new variable length integer list message with the given
@@ -39,41 +36,47 @@ public class VariableLengthIntegerListMessage extends Message {
 					"The maximum length for a variable length integer list is 50,000");
 		}
 
-		length = new VariableLengthIntegerMessage(ints.length);
+		this.ints = ints;
 
-		varInts = new VariableLengthIntegerMessage[ints.length];
-
-		for (int i = 0; i < ints.length; i++) {
-			varInts[i] = new VariableLengthIntegerMessage(ints[i]);
-		}
 	}
 
 	/**
 	 * {@link Message#Message(InputStream)}
 	 */
-	public VariableLengthIntegerListMessage(InputStream in) throws IOException,
-			ParsingException {
-		super(in);
+	public VariableLengthIntegerListMessage(InputStream in, int maxLength)
+			throws IOException, ParsingException {
+		super(in, maxLength);
 	}
 
 	@Override
-	protected void read(InputStream in) throws IOException, ParsingException {
-		length = new VariableLengthIntegerMessage(in);
+	protected void read(InputStream in, int maxLength) throws IOException,
+			ParsingException {
+		VariableLengthIntegerMessage length = new VariableLengthIntegerMessage(
+				in, maxLength);
 		long l = length.getLong();
 
-		if (l > MAX_LENGTH) {
+		if (l > MAX_LENGTH || l < 0) {
 			throw new ParsingException("List is to long. Maximum is 50,000");
 		}
 
-		varInts = new VariableLengthIntegerMessage[(int) l];
+		ints = new long[(int) l];
 
 		for (int i = 0; i < l; i++) {
-			varInts[i] = new VariableLengthIntegerMessage(in);
+			ints[i] = new VariableLengthIntegerMessage(in, maxLength).getLong();
 		}
 	}
 
 	@Override
 	public byte[] getBytes() {
+		VariableLengthIntegerMessage length = new VariableLengthIntegerMessage(
+				ints.length);
+
+		VariableLengthIntegerMessage[] varInts = new VariableLengthIntegerMessage[ints.length];
+
+		for (int i = 0; i < ints.length; i++) {
+			varInts[i] = new VariableLengthIntegerMessage(ints[i]);
+		}
+
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
 		try {
@@ -96,12 +99,6 @@ public class VariableLengthIntegerListMessage extends Message {
 	 * @return The content of the list as long[].
 	 */
 	public long[] getContent() {
-		long[] l = new long[(int) length.getLong()];
-
-		for (int i = 0; i < l.length; i++) {
-			l[i] = varInts[i].getLong();
-		}
-
-		return l;
+		return ints;
 	}
 }

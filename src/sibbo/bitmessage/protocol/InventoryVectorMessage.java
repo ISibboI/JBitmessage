@@ -5,8 +5,6 @@ import java.io.InputStream;
 import java.util.Objects;
 import java.util.logging.Logger;
 
-import sibbo.bitmessage.data.InventoryObject;
-
 /**
  * A message containing the hash value of an inventory object.
  * 
@@ -23,20 +21,24 @@ public class InventoryVectorMessage extends Message {
 	/**
 	 * Creates a new inventory vector message.
 	 * 
-	 * @param o The {@code InventoryObject} that should be hashed.
+	 * @param o The hash.
 	 */
-	public InventoryVectorMessage(InventoryObject o) {
-		Objects.requireNonNull(o, "o must not be null!");
+	public InventoryVectorMessage(byte[] hash) {
+		Objects.requireNonNull(hash, "o must not be null!");
 
-		hash = o.getHash();
+		if (hash.length != 32) {
+			throw new IllegalArgumentException("hash must have a length of 32");
+		}
+
+		this.hash = hash;
 	}
 
 	/**
 	 * {@link Message#Message(InputStream)}
 	 */
-	public InventoryVectorMessage(InputStream in) throws IOException,
-			ParsingException {
-		super(in);
+	public InventoryVectorMessage(InputStream in, int maxLength)
+			throws IOException, ParsingException {
+		super(in, maxLength);
 	}
 
 	public byte[] getHash() {
@@ -44,7 +46,8 @@ public class InventoryVectorMessage extends Message {
 	}
 
 	@Override
-	protected void read(InputStream in) throws IOException, ParsingException {
+	protected void read(InputStream in, int maxLength) throws IOException,
+			ParsingException {
 		hash = new byte[32];
 		readComplete(in, hash);
 	}

@@ -1,9 +1,12 @@
 package sibbo.bitmessage.protocol;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.logging.Level;
@@ -25,17 +28,17 @@ public class BaseMessage extends Message {
 	/** See protocol specification. */
 	private byte[] magic;
 
-	/** A NULL-padded ASCII string with a length of 12. */
-	private byte[] command;
+	/** The command of the message. */
+	private String command;
 
 	/** The length of the payload. */
-	private byte[] length;
+	private int length = -1;
 
 	/** The first 4 bytes of the sha512 checksum of the payload. */
-	private byte[] checksum;
+	private byte[] checksum = null;
 
 	/** The payload */
-	private byte[] payload;
+	private P2PMessage payload;
 
 	/**
 	 * Constructs a new Message with the given parameters.
@@ -44,7 +47,7 @@ public class BaseMessage extends Message {
 	 * @param command A NULL-padded ASCII string with a length of 12.
 	 * @param payload The payload.
 	 */
-	public BaseMessage(byte[] magic, String command, Message payload) {
+	public BaseMessage(byte[] magic, String command, P2PMessage payload) {
 		Objects.requireNonNull(magic, "magic must not be null.");
 		Objects.requireNonNull(command, "command must not be null.");
 		Objects.requireNonNull(payload, "payload must not be null.");
@@ -58,30 +61,17 @@ public class BaseMessage extends Message {
 					"command must not be longer than 12");
 		}
 
-		try {
-			this.command = new byte[12];
-			byte[] ascii = command.getBytes("ASCII");
-
-			for (int i = 0; i < ascii.length; i++) {
-				this.command[i] = ascii[i];
-			}
-		} catch (UnsupportedEncodingException e) {
-			LOG.log(Level.SEVERE, "ASCII not supported!", e);
-			System.exit(1);
-		}
-
-		this.payload = payload.getBytes();
-		this.length = Util.getBytes(this.payload.length);
+		this.payload = payload;
 		this.magic = magic;
-		this.checksum = Digest.sha512(this.payload, 4);
-
+		this.command = command;
 	}
 
 	/**
 	 * {@link Message#NetworkMessage(InputStream)}
 	 */
-	public BaseMessage(InputStream in) throws IOException, ParsingException {
-		super(in);
+	public BaseMessage(InputStream in, int maxLength) throws IOException,
+			ParsingException {
+		super(in, maxLength);
 	}
 
 	public byte[] getMagic() {
@@ -89,34 +79,24 @@ public class BaseMessage extends Message {
 	}
 
 	public String getCommand() {
-		try {
-			StringBuilder str = new StringBuilder();
-
-			for (byte b : command) {
-				if (b == 0) {
-					break;
-				}
-
-				str.append(new String(new byte[] { b }, "ASCII"));
-			}
-
-			return str.toString();
-		} catch (UnsupportedEncodingException e) {
-			LOG.log(Level.SEVERE, "ASCII not supported!", e);
-			System.exit(1);
-			return null;
-		}
+		return command;
 	}
 
+	/**
+	 * Returns the length of the payload. If the getBytes() method hasn't be
+	 * used already, the return value is -1.
+	 * 
+	 * @return The length of the payload or -1 if getBytes() hasn't been used.
+	 */
 	public int getLength() {
-		return Util.getInt(length);
+		return length;
 	}
 
 	public byte[] getChecksum() {
 		return checksum;
 	}
 
-	public byte[] getPayload() {
+	public P2PMessage getPayload() {
 		return payload;
 	}
 
@@ -126,10 +106,27 @@ public class BaseMessage extends Message {
 
 		try {
 			b.write(magic);
-			b.write(command);
-			b.write(length);
+
+			byte[] ascii = command.getBytes("ASCII");
+
+			for (int i = 0; i < 12; i++) {
+				if (i < ascii.length) {
+					b.write(ascii[i]);
+				} else {
+					b.write(0);
+				}
+			}
+
+			byte[] pbytes = payload.getBytes();
+			length = pbytes.length;
+			checksum = Digest.sha512(pbytes, 4);
+
+			b.write(Util.getBytes(length));
 			b.write(checksum);
-			b.write(payload);
+			b.write(pbytes);
+		} catch (UnsupportedEncodingException e) {
+			LOG.log(Level.SEVERE, "ASCII not supported!", e);
+			System.exit(1);
 		} catch (IOException e) {
 			LOG.log(Level.SEVERE, "Could not write bytes!", e);
 			System.exit(1);
@@ -139,35 +136,91 @@ public class BaseMessage extends Message {
 	}
 
 	@Override
-	protected void read(InputStream in) throws IOException, ParsingException {
+	protected void read(InputStream in, int maxLength) throws IOException,
+			ParsingException {
 		magic = new byte[4];
 		readComplete(in, magic);
 
-		command = new byte[12];
-		readComplete(in, command);
+		byte[] ascii = new byte[12];
+		readComplete(in, ascii);
 
-		length = new byte[4];
-		readComplete(in, length);
+		StringBuilder str = new StringBuilder();
+
+		for (byte b : ascii) {
+			if (b == 0) {
+				break;
+			}
+
+			str.append(new String(new byte[] { b }, "ASCII"));
+		}
+
+		command = str.toString();
+
+		byte[] lengthBytes = new byte[4];
+		readComplete(in, lengthBytes);
+		length = Util.getInt(lengthBytes);
 
 		checksum = new byte[4];
 		readComplete(in, checksum);
 
-		int l = getLength();
-
-		if (l < 0) {
+		if (length < 0) {
 			throw new ParsingException("The length of the payload is < 0");
 		}
 
-		if (l > 10 * 1024 * 1024) {
-			throw new ParsingException("The payload is too long: " + l
+		if (length > maxLength) {
+			throw new ParsingException("The payload is too long: " + length
 					+ " bytes");
 		}
 
-		payload = new byte[l];
-		readComplete(in, payload);
+		byte[] payloadBytes = new byte[length];
+		readComplete(in, payloadBytes);
 
-		if (!Arrays.equals(checksum, Digest.sha512(payload, 4))) {
+		if (!Arrays.equals(checksum, Digest.sha512(payloadBytes, 4))) {
 			throw new ParsingException("Wrong digest for payload!");
+		}
+
+		InputStream payloadIn = new ByteArrayInputStream(payloadBytes);
+
+		try {
+			Class<P2PMessage> cPayload = getPayloadType(command);
+
+			if (cPayload == null) {
+				throw new ParsingException("Unknown command: " + command);
+			}
+
+			Constructor<P2PMessage> constructor = cPayload.getConstructor(
+					InputStream.class, Integer.class);
+			payload = constructor.newInstance(payloadIn, payloadBytes.length);
+
+			if (payloadIn.available() > 0) {
+				throw new ParsingException("The payload contains trash.");
+			}
+		} catch (NoSuchMethodException e) {
+			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
+					+ " is missing a Constructor(InputStream)!", e);
+			System.exit(1);
+		} catch (InstantiationException e) {
+			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
+					+ " is abstract!", e);
+			System.exit(1);
+		} catch (IllegalAccessException e) {
+			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
+					+ " has an inaccessible Constructor(InputStream)!", e);
+			System.exit(1);
+		} catch (IllegalArgumentException e) {
+			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
+					+ " caused an error!", e);
+			System.exit(1);
+		} catch (InvocationTargetException e) {
+			if (e.getCause() instanceof ParsingException) {
+				throw (ParsingException) e.getCause();
+			} else if (e.getCause() instanceof IOException) {
+				throw (IOException) e.getCause();
+			} else {
+				LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
+						+ " caused an error!", e);
+				System.exit(1);
+			}
 		}
 	}
 }

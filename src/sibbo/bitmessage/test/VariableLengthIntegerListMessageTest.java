@@ -36,5 +36,7 @@ public class VariableLengthIntegerListMessageTest {
 			System.out.println("Different lists: " + Arrays.toString(list)
 					+ " != " + Arrays.toString(b.getContent()));
 		}
+
+		System.out.println("Finished");
 	}
 }

@@ -21,19 +21,19 @@ public class NetworkAddressMessage extends Message {
 			.getLogger(NetworkAddressMessage.class.getName());
 
 	/** Timestamp describing when the node with this address was last seen. */
-	private byte[] time; // 4
+	private int time;
 
 	/** The stream number of the node described by this network address. */
-	private byte[] stream; // 4
+	private int stream;
 
 	/** Bitfield of features that are enabled by this node. */
-	private byte[] services; // 8
+	private NodeServicesMessage services;
 
 	/** IPv6 address or IPv6 mapped IPv4 address. */
-	private byte[] ip; // 16
+	private InetAddress ip;
 
 	/** The port of the node. */
-	private byte[] port; // 2
+	private int port;
 
 	/**
 	 * Creates a new network address message describing a node.
@@ -44,8 +44,8 @@ public class NetworkAddressMessage extends Message {
 	 * @param ip The ip of the node.
 	 * @param port The port of the node.
 	 */
-	public NetworkAddressMessage(int time, int stream, long services,
-			InetAddress ip, int port) {
+	public NetworkAddressMessage(int time, int stream,
+			NodeServicesMessage services, InetAddress ip, int port) {
 		Objects.requireNonNull(ip, "ip must not be null!");
 
 		if (stream == 0) {
@@ -57,66 +57,64 @@ public class NetworkAddressMessage extends Message {
 					"port must not be in range 1 - 65535");
 		}
 
-		if (!NodeServices.checkService(services, NodeServices.NODE_NETWORK)) {
+		if (!services.isSet(NodeServicesMessage.NODE_NETWORK)) {
 			throw new IllegalArgumentException(
 					"A node must have the NODE_NETWORK service enabled!");
 		}
 
-		this.time = Util.getBytes(time);
-		this.stream = Util.getBytes(stream);
-		this.services = Util.getBytes(services);
-
-		this.ip = ip.getAddress();
-		if (this.ip.length == 4) {
-			byte[] tmpip = new byte[16];
-
-			tmpip[10] = tmpip[11] = -1;
-			tmpip[12] = this.ip[0];
-			tmpip[13] = this.ip[1];
-			tmpip[14] = this.ip[2];
-			tmpip[15] = this.ip[3];
-
-			this.ip = tmpip;
-		}
-
-		byte[] tmpport = Util.getBytes(port);
-		this.port = new byte[] { tmpport[2], tmpport[3] };
+		this.time = time;
+		this.stream = stream;
+		this.services = services;
+		this.ip = ip;
+		this.port = port;
 	}
 
 	/**
 	 * {@link Message#Message(InputStream)}
 	 */
-	public NetworkAddressMessage(InputStream in) throws IOException,
-			ParsingException {
-		super(in);
+	public NetworkAddressMessage(InputStream in, int maxLength)
+			throws IOException, ParsingException {
+		super(in, maxLength);
 	}
 
 	@Override
-	protected void read(InputStream in) throws IOException, ParsingException {
-		time = new byte[4];
-		readComplete(in, time);
+	protected void read(InputStream in, int maxLength) throws IOException,
+			ParsingException {
+		byte[] timeBytes = new byte[4];
+		readComplete(in, timeBytes);
+		time = Util.getInt(timeBytes);
 
-		stream = new byte[4];
-		readComplete(in, stream);
+		byte[] streamBytes = new byte[4];
+		readComplete(in, streamBytes);
+		stream = Util.getInt(streamBytes);
 
-		services = new byte[8];
-		readComplete(in, stream);
+		services = new NodeServicesMessage(in, maxLength);
 
-		ip = new byte[16];
-		readComplete(in, ip);
+		byte[] ipBytes = new byte[16];
+		readComplete(in, ipBytes);
 
-		port = new byte[2];
-		readComplete(in, port);
+		try {
+			if (isIpv4(ipBytes)) {
+				ip = InetAddress.getByAddress(Arrays.copyOfRange(ipBytes, 12,
+						15));
+			} else {
+				ip = InetAddress.getByAddress(ipBytes);
+			}
+		} catch (UnknownHostException e) {
+			throw new ParsingException("Not an IP: " + Arrays.toString(ipBytes));
+		}
 
-		InetAddress addr = getIp();
+		byte[] portBytes = new byte[2];
+		readComplete(in, portBytes);
+		port = Util.getInt(new byte[] { 0, 0, portBytes[0], portBytes[1] });
 
-		if (addr.isAnyLocalAddress() || addr.isMulticastAddress()) {
+		if (ip.isAnyLocalAddress() || ip.isMulticastAddress()) {
 			throw new ParsingException("IP is local or multicast!");
 		}
 
 		boolean isNull = true;
 
-		for (byte b : addr.getAddress()) {
+		for (byte b : ip.getAddress()) {
 			if (b != 0) {
 				isNull = false;
 			}
@@ -132,11 +130,27 @@ public class NetworkAddressMessage extends Message {
 		ByteArrayOutputStream b = new ByteArrayOutputStream(34);
 
 		try {
-			b.write(time);
-			b.write(stream);
-			b.write(services);
+			b.write(Util.getBytes(time));
+			b.write(Util.getBytes(stream));
+			b.write(services.getBytes());
+
+			byte[] ip = this.ip.getAddress();
+			if (ip.length == 4) {
+				byte[] tmpip = new byte[16];
+
+				tmpip[10] = tmpip[11] = -1;
+				tmpip[12] = ip[0];
+				tmpip[13] = ip[1];
+				tmpip[14] = ip[2];
+				tmpip[15] = ip[3];
+
+				ip = tmpip;
+			}
+
 			b.write(ip);
-			b.write(port);
+
+			byte[] port = Util.getBytes(this.port);
+			b.write(new byte[] { port[2], port[3] });
 		} catch (IOException e) {
 			LOG.log(Level.SEVERE, "Could not write bytes!", e);
 			System.exit(1);
@@ -146,37 +160,34 @@ public class NetworkAddressMessage extends Message {
 	}
 
 	public int getTime() {
-		return Util.getInt(time);
+		return time;
 	}
 
 	public int getStream() {
-		return Util.getInt(stream);
+		return stream;
 	}
 
-	public long getServices() {
-		return Util.getLong(services);
+	public NodeServicesMessage getServices() {
+		return services;
 	}
 
 	public InetAddress getIp() {
-		try {
-			if (isIpv4()) {
-				return InetAddress.getByAddress(Arrays.copyOfRange(ip, 12, 15));
-			} else {
-				return InetAddress.getByAddress(ip);
-			}
-		} catch (UnknownHostException e) {
-			return null;
-		}
+		return ip;
 	}
 
 	/**
-	 * Returns true if the ip-address is an IPv4 address, false if it is an IPv6
-	 * address.
+	 * Returns true if the given 16 byte ip-address is an IPv4 address, false if
+	 * it is an IPv6 address.
 	 * 
-	 * @return True if the ip-address is an IPv4 address, false if it is an IPv6
-	 *         address.
+	 * @param ip An IPv6 address or v6 mapped v4 address.
+	 * @return True if the given 16 byte ip-address is an IPv4 address, false if
+	 *         it is an IPv6 address.
 	 */
-	public boolean isIpv4() {
+	public boolean isIpv4(byte[] ip) {
+		if (ip.length != 16) {
+			throw new IllegalArgumentException("ip must have a length of 16.");
+		}
+
 		byte[] prefix = new byte[12];
 		prefix[10] = prefix[11] = -1;
 
@@ -184,6 +195,6 @@ public class NetworkAddressMessage extends Message {
 	}
 
 	public int getPort() {
-		return Util.getInt(new byte[] { 0, 0, port[0], port[1] });
+		return port;
 	}
 }

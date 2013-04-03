@@ -16,7 +16,7 @@ public class VariableLengthIntegerMessage extends Message {
 			.getLogger(VariableLengthIntegerMessage.class.getName());
 
 	/** Contains the variable length integer. */
-	private byte[] varInt;
+	private long n;
 
 	/**
 	 * Creates a new variable length integer message containing the given value.
@@ -26,7 +26,48 @@ public class VariableLengthIntegerMessage extends Message {
 	 * @param n The number to transmit.
 	 */
 	public VariableLengthIntegerMessage(long n) {
+		this.n = n;
+	}
+
+	/**
+	 * {@link Message#Message(InputStream)}
+	 */
+	public VariableLengthIntegerMessage(InputStream in, int maxLength)
+			throws IOException, ParsingException {
+		super(in, maxLength);
+	}
+
+	@Override
+	protected void read(InputStream in, int maxLength) throws IOException,
+			ParsingException {
+		int first = in.read();
+		byte[] varInt;
+
+		if (first == -1) {
+			throw new IOException("End of stream.");
+		} else if (first < 0xfd) {
+			varInt = new byte[] { (byte) first };
+		} else {
+			varInt = new byte[1 << first - 0xfc];
+			readComplete(in, varInt);
+		}
+
+		byte[] tmp = new byte[8];
+
+		for (int i = 0; i < tmp.length; i++) {
+			int index = i + varInt.length - tmp.length;
+
+			if (index >= 0) {
+				tmp[i] = varInt[index];
+			}
+		}
+		n = Util.getLong(tmp);
+	}
+
+	@Override
+	public byte[] getBytes() {
 		byte[] b = Util.getBytes(n);
+		byte[] varInt;
 
 		if (n < 0xfd && n >= 0) {
 			varInt = new byte[] { b[7] };
@@ -38,56 +79,11 @@ public class VariableLengthIntegerMessage extends Message {
 			varInt = new byte[] { (byte) 0xff, b[0], b[1], b[2], b[3], b[4],
 					b[5], b[6], b[7] };
 		}
-	}
 
-	/**
-	 * {@link Message#Message(InputStream)}
-	 */
-	public VariableLengthIntegerMessage(InputStream in) throws IOException,
-			ParsingException {
-		super(in);
-	}
-
-	@Override
-	protected void read(InputStream in) throws IOException, ParsingException {
-		int first = in.read();
-
-		if (first == -1) {
-			throw new IOException("End of stream.");
-		} else if (first < 0xfd) {
-			varInt = new byte[] { (byte) first };
-		} else {
-			byte[] tmp = new byte[1 << first - 0xfc];
-
-			readComplete(in, tmp);
-			varInt = new byte[tmp.length + 1];
-			varInt[0] = (byte) first;
-
-			for (int i = 0; i < tmp.length; i++) {
-				varInt[i + 1] = tmp[i];
-			}
-		}
-	}
-
-	@Override
-	public byte[] getBytes() {
 		return varInt;
 	}
 
 	public long getLong() {
-		if (varInt.length == 1) {
-			return Util.getLong(new byte[] { 0, 0, 0, 0, 0, 0, 0, varInt[0] });
-		} else if (varInt.length == 3) {
-			return Util.getLong(new byte[] { 0, 0, 0, 0, 0, 0, varInt[1],
-					varInt[2] });
-		} else if (varInt.length == 5) {
-			return Util.getLong(new byte[] { 0, 0, 0, 0, varInt[1], varInt[2],
-					varInt[3], varInt[4] });
-		} else if (varInt.length == 9) {
-			return Util.getLong(new byte[] { varInt[1], varInt[2], varInt[3],
-					varInt[4], varInt[5], varInt[6], varInt[7], varInt[8] });
-		} else {
-			throw new IllegalStateException("Byte[] has the wrong length.");
-		}
+		return n;
 	}
 }
