@@ -53,4 +53,8 @@ public class InventoryVectorMessage extends Message {
 	public byte[] getBytes() {
 		return hash;
 	}
+
+	public int length() {
+		return 32;
+	}
 }

@@ -32,6 +32,8 @@ public class BaseMessage {
 		COMMANDS.put(VersionMessage.COMMAND, VersionMessage.class);
 		COMMANDS.put(VerAckMessage.COMMAND, VerAckMessage.class);
 		COMMANDS.put(AddrMessage.COMMAND, AddrMessage.class);
+		COMMANDS.put(InvMessage.COMMAND, InvMessage.class);
+		COMMANDS.put(GetdataMessage.COMMAND, GetdataMessage.class);
 		// TODO Fill COMMANDS
 	}
 

@@ -14,4 +14,8 @@ public class Options {
 	public int getMaxMessageLength() {
 		return 10 * 1024 * 1024;
 	}
+
+	public long getMaxInvLength() {
+		return 50_000;
+	}
 }
