@@ -18,4 +18,16 @@ public class Options {
 	public long getMaxInvLength() {
 		return 50_000;
 	}
+
+	public int getPOWAverageNonceTrialsPerByte() {
+		return 320;
+	}
+
+	public int getPOWPayloadLengthExtraBytes() {
+		return 14_000;
+	}
+
+	public float getPOWSystemLoad() {
+		return 0.5f;
+	}
 }

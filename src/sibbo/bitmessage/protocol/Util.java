@@ -70,14 +70,14 @@ public final class Util {
 	public static long getLong(byte[] b) {
 		long l = 0;
 
-		l |= (b[0] & 0xFF) << 56;
-		l |= (b[1] & 0xFF) << 48;
-		l |= (b[2] & 0xFF) << 40;
-		l |= (b[3] & 0xFF) << 32;
-		l |= (b[4] & 0xFF) << 24;
-		l |= (b[5] & 0xFF) << 16;
-		l |= (b[6] & 0xFF) << 8;
-		l |= (b[7] & 0xFF);
+		l |= (b[0] & 0xFFL) << 56;
+		l |= (b[1] & 0xFFL) << 48;
+		l |= (b[2] & 0xFFL) << 40;
+		l |= (b[3] & 0xFFL) << 32;
+		l |= (b[4] & 0xFFL) << 24;
+		l |= (b[5] & 0xFFL) << 16;
+		l |= (b[6] & 0xFFL) << 8;
+		l |= (b[7] & 0xFFL);
 
 		return l;
 	}

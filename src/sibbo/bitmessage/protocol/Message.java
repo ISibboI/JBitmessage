@@ -14,8 +14,7 @@ public abstract class Message {
 	/**
 	 * Creates a new message reading the data from the input stream.
 	 * 
-	 * @param in The input stream to read from.
-	 * @param maxLength The maximum allowed length of bytes to be read.
+	 * @param b The input buffer to read from.
 	 * @throws IOException If reading from the given input stream fails.
 	 * @throws ParsingException If parsing the data fails.
 	 */
@@ -26,11 +25,11 @@ public abstract class Message {
 	}
 
 	/**
-	 * Initializes the message reading the data from the input stream.
+	 * Initializes the message reading the data from the input buffer.
 	 * 
 	 * @param in The input stream to read from.
 	 * @param maxLength The maximum allowed length of bytes to be read.
-	 * @throws IOException If reading from the given input stream fails.
+	 * @throws IOException If reading from the given input buffer fails.
 	 * @throws ParsingException If parsing the data fails.
 	 */
 	protected abstract void read(InputBuffer b) throws IOException,

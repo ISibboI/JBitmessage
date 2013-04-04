@@ -34,6 +34,7 @@ public class BaseMessage {
 		COMMANDS.put(AddrMessage.COMMAND, AddrMessage.class);
 		COMMANDS.put(InvMessage.COMMAND, InvMessage.class);
 		COMMANDS.put(GetdataMessage.COMMAND, GetdataMessage.class);
+		COMMANDS.put(GetpubkeyMessage.COMMAND, GetpubkeyMessage.class);
 		// TODO Fill COMMANDS
 	}
 
@@ -174,7 +175,7 @@ public class BaseMessage {
 					+ " bytes");
 		}
 
-		buffer = new InputBuffer(in, 128, length);
+		buffer = new InputBuffer(in, length, length);
 		byte[] payloadBytes = buffer.get(0, length);
 
 		if (!Arrays.equals(checksum, Digest.sha512(payloadBytes, 4))) {
