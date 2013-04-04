@@ -190,4 +190,8 @@ public class NetworkAddressMessage extends Message {
 	public int getPort() {
 		return port;
 	}
+
+	public int length() {
+		return 26;
+	}
 }

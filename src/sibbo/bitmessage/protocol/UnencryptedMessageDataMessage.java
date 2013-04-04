@@ -19,7 +19,7 @@ public class UnencryptedMessageDataMessage extends Message {
 			.getLogger(UnencryptedMessageDataMessage.class.getName());
 
 	/** This class implements version 1 messages. */
-	private static final long VERSION = 1;
+	public static final long MESSAGE_VERSION = 1;
 
 	/** The version of the bitmessage address. */
 	private long addressVersion;
@@ -89,7 +89,7 @@ public class UnencryptedMessageDataMessage extends Message {
 				b);
 		b = b.getSubBuffer(messageVersion.length());
 
-		if (messageVersion.getLong() != VERSION) {
+		if (messageVersion.getLong() != MESSAGE_VERSION) {
 			throw new ParsingException(
 					"Cannot understand messages of version: " + messageVersion);
 		}
@@ -151,8 +151,28 @@ public class UnencryptedMessageDataMessage extends Message {
 	}
 
 	private byte[] getBytesWithoutSignature() {
-		// TODO Auto-generated method stub
-		return null;
+		ByteArrayOutputStream b = new ByteArrayOutputStream();
+
+		try {
+			b.write(new VariableLengthIntegerMessage(MESSAGE_VERSION)
+					.getBytes());
+			b.write(new VariableLengthIntegerMessage(addressVersion).getBytes());
+			b.write(new VariableLengthIntegerMessage(stream).getBytes());
+			b.write(behavior.getBytes());
+			b.write(publicSigningKey);
+			b.write(publicEncryptionKey);
+			b.write(destinationRipe);
+			b.write(message.getBytes());
+
+			byte[] ack = acknowledgment.getBytes();
+			b.write(new VariableLengthIntegerMessage(ack.length).getBytes());
+			b.write(ack);
+		} catch (IOException e) {
+			LOG.log(Level.SEVERE, "Could not write bytes!", e);
+			System.exit(1);
+		}
+
+		return b.toByteArray();
 	}
 
 	@Override

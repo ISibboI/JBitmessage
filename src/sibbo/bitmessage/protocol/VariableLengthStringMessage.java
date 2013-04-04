@@ -97,4 +97,15 @@ public class VariableLengthStringMessage extends Message {
 	public String getMessage() {
 		return message;
 	}
+
+	public int length() {
+		try {
+			return new VariableLengthIntegerMessage(message.length()).length()
+					+ message.getBytes("UTF-8").length;
+		} catch (UnsupportedEncodingException e) {
+			LOG.log(Level.SEVERE, "UTF-8 not supported!", e);
+			System.exit(1);
+			return 0;
+		}
+	}
 }

@@ -72,9 +72,9 @@ public class InputBuffer {
 	 *             read.
 	 */
 	public byte[] get(int offset, int length) throws IOException {
-		if (offset < 0 || offset + length >= this.offset + this.length) {
+		if (offset < 0 || offset + length > this.offset + this.length) {
 			throw new IndexOutOfBoundsException("Out of bounds: " + offset
-					+ "-" + length + "/" + this.offset + "-" + length);
+					+ "-" + length + "/" + this.offset + "-" + this.length);
 		}
 
 		return buffer.get(offset + this.offset, length);
@@ -99,7 +99,7 @@ public class InputBuffer {
 	public InputBuffer getSubBuffer(int offset, int length) {
 		if (offset < 0 || offset + length >= this.offset + this.length) {
 			throw new IndexOutOfBoundsException("Out of bounds: " + offset
-					+ "-" + length + "/" + this.offset + "-" + length);
+					+ "-" + length + "/" + this.offset + "-" + this.length);
 		}
 
 		return new InputBuffer(buffer, offset + this.offset, length);
@@ -173,19 +173,13 @@ public class InputBuffer {
 		}
 
 		public byte[] get(int offset, int length) throws IOException {
-			if (offset < 0 || offset >= maxSize) {
-				throw new IndexOutOfBoundsException("Offset out of bounds: "
-						+ offset);
+			if (offset < 0 || offset + length > maxSize) {
+				throw new IndexOutOfBoundsException("Out of bounds: " + offset
+						+ "-" + length + "/" + 0 + "-" + maxSize);
 			}
 
-			if (length < 0) {
-				throw new IndexOutOfBoundsException("Length negative: "
-						+ length);
-			}
-
-			if (offset + length > maxSize) {
-				throw new IndexOutOfBoundsException(
-						"Length + Offset out of bounds: " + (length + offset));
+			if (length == 0) {
+				return new byte[0];
 			}
 
 			if (offset + length > size) {

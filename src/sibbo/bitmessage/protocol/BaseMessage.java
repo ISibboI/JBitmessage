@@ -26,9 +26,12 @@ public class BaseMessage {
 			.getName());
 
 	/** Stores the types that are used to parse the commands */
-	private static final HashMap<String, Class<P2PMessage>> COMMANDS = new HashMap<>();
+	private static final HashMap<String, Class<? extends P2PMessage>> COMMANDS = new HashMap<>();
 
 	static {
+		COMMANDS.put(VersionMessage.COMMAND, VersionMessage.class);
+		COMMANDS.put(VerAckMessage.COMMAND, VerAckMessage.class);
+		COMMANDS.put(AddrMessage.COMMAND, AddrMessage.class);
 		// TODO Fill COMMANDS
 	}
 
@@ -54,22 +57,11 @@ public class BaseMessage {
 	 * @param command A NULL-padded ASCII string with a length of 12.
 	 * @param payload The payload.
 	 */
-	public BaseMessage(String command, P2PMessage payload) {
-		Objects.requireNonNull(magic, "magic must not be null.");
-		Objects.requireNonNull(command, "command must not be null.");
+	public BaseMessage(P2PMessage payload) {
 		Objects.requireNonNull(payload, "payload must not be null.");
 
-		if (magic.length != 4) {
-			throw new IllegalArgumentException("magic must have a length of 4");
-		}
-
-		if (command.length() > 12) {
-			throw new IllegalArgumentException(
-					"command must not be longer than 12");
-		}
-
 		this.payload = payload;
-		this.command = command;
+		this.command = payload.getCommand();
 	}
 
 	/**
@@ -188,13 +180,13 @@ public class BaseMessage {
 		}
 
 		try {
-			Class<P2PMessage> cPayload = getPayloadType(command);
+			Class<? extends P2PMessage> cPayload = getPayloadType(command);
 
 			if (cPayload == null) {
 				throw new ParsingException("Unknown command: " + command);
 			}
 
-			Constructor<P2PMessage> constructor = cPayload
+			Constructor<? extends P2PMessage> constructor = cPayload
 					.getConstructor(InputBuffer.class);
 			payload = constructor.newInstance(buffer);
 		} catch (NoSuchMethodException e) {
@@ -226,7 +218,7 @@ public class BaseMessage {
 		}
 	}
 
-	public Class<P2PMessage> getPayloadType(String command) {
+	public Class<? extends P2PMessage> getPayloadType(String command) {
 		return COMMANDS.get(command);
 	}
 }

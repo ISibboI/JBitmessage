@@ -5,30 +5,26 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
+import sibbo.bitmessage.Options;
 import sibbo.bitmessage.protocol.BaseMessage;
 import sibbo.bitmessage.protocol.P2PMessage;
 import sibbo.bitmessage.protocol.ParsingException;
+import sibbo.bitmessage.protocol.VerAckMessage;
 
 public class BaseMessageTest {
 	private static final Logger LOG = Logger.getLogger(BaseMessageTest.class
 			.getName());
 
 	public static void main(String[] args) throws IOException, ParsingException {
-		byte[] magic = new byte[] { 4, -1, 0, 5 };
-		String command = "Zero";
-		P2PMessage m = null; // TODO Add message here
+		P2PMessage m = new VerAckMessage();
 
-		BaseMessage b = new BaseMessage(magic, command, m);
-		BaseMessage c = new BaseMessage(new ByteArrayInputStream(b.getBytes()));
+		BaseMessage b = new BaseMessage(m);
+		BaseMessage c = new BaseMessage(new ByteArrayInputStream(b.getBytes()),
+				Options.getInstance().getMaxMessageLength());
 
-		if (!Arrays.equals(c.getMagic(), magic)) {
-			System.out.println("Wrong magic: " + Arrays.toString(c.getMagic())
-					+ " != " + Arrays.toString(magic));
-		}
-
-		if (!c.getCommand().equals(command)) {
+		if (!c.getCommand().equals(b.getCommand())) {
 			System.out.println("Wrong command: " + c.getCommand() + " != "
-					+ command);
+					+ b.getCommand());
 		}
 
 		if (!Arrays
