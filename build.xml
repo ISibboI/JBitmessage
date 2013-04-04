@@ -72,4 +72,14 @@
             <classpath refid="JBitmessage.classpath"/>
         </java>
     </target>
+    <target name="POWWorker">
+        <java classname="sibbo.bitmessage.crypt.POWWorker" failonerror="true" fork="yes">
+            <classpath refid="JBitmessage.classpath"/>
+        </java>
+    </target>
+    <target name="GetpubkeyMessageTest">
+        <java classname="sibbo.bitmessage.test.GetpubkeyMessageTest" failonerror="true" fork="yes">
+            <classpath refid="JBitmessage.classpath"/>
+        </java>
+    </target>
 </project>
