@@ -3,7 +3,7 @@ package sibbo.bitmessage.crypt;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import sibbo.bitmessage.protocol.Util;
+import sibbo.bitmessage.network.protocol.Util;
 
 /**
  * Does the POW calculation, uses multiple threads.

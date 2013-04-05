@@ -5,9 +5,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
-import sibbo.bitmessage.protocol.InputBuffer;
-import sibbo.bitmessage.protocol.ParsingException;
-import sibbo.bitmessage.protocol.VariableLengthIntegerListMessage;
+import sibbo.bitmessage.network.protocol.InputBuffer;
+import sibbo.bitmessage.network.protocol.ParsingException;
+import sibbo.bitmessage.network.protocol.VariableLengthIntegerListMessage;
 
 public class VariableLengthIntegerListMessageTest {
 	private static final Logger LOG = Logger

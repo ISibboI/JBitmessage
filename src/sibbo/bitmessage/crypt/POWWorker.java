@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import sibbo.bitmessage.protocol.Util;
+import sibbo.bitmessage.network.protocol.Util;
 
 /**
  * A worker class to parallelize POW calculation.

@@ -6,10 +6,10 @@ import java.util.Arrays;
 import java.util.logging.Logger;
 
 import sibbo.bitmessage.Options;
-import sibbo.bitmessage.protocol.BaseMessage;
-import sibbo.bitmessage.protocol.P2PMessage;
-import sibbo.bitmessage.protocol.ParsingException;
-import sibbo.bitmessage.protocol.VerAckMessage;
+import sibbo.bitmessage.network.protocol.BaseMessage;
+import sibbo.bitmessage.network.protocol.P2PMessage;
+import sibbo.bitmessage.network.protocol.ParsingException;
+import sibbo.bitmessage.network.protocol.VerAckMessage;
 
 public class BaseMessageTest {
 	private static final Logger LOG = Logger.getLogger(BaseMessageTest.class

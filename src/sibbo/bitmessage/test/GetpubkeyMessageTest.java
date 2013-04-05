@@ -5,9 +5,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
-import sibbo.bitmessage.protocol.BaseMessage;
-import sibbo.bitmessage.protocol.GetpubkeyMessage;
-import sibbo.bitmessage.protocol.ParsingException;
+import sibbo.bitmessage.network.protocol.BaseMessage;
+import sibbo.bitmessage.network.protocol.GetpubkeyMessage;
+import sibbo.bitmessage.network.protocol.ParsingException;
 
 public class GetpubkeyMessageTest {
 	private static final Logger LOG = Logger

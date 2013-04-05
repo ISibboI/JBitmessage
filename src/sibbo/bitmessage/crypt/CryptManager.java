@@ -4,7 +4,7 @@ import java.math.BigInteger;
 import java.util.logging.Logger;
 
 import sibbo.bitmessage.Options;
-import sibbo.bitmessage.protocol.Util;
+import sibbo.bitmessage.network.protocol.Util;
 
 public class CryptManager {
 	private static final Logger LOG = Logger.getLogger(CryptManager.class
@@ -16,9 +16,9 @@ public class CryptManager {
 		return instance;
 	}
 
-	public static void checkSignature(byte[] data, byte[] signature) {
+	public static boolean checkSignature(byte[] data, byte[] signature) {
 		// TODO Auto-generated method stub
-
+		throw new RuntimeException("Not yet implemented");
 	}
 
 	private CryptManager() {
