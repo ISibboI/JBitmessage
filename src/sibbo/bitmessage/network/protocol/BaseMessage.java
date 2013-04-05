@@ -175,7 +175,13 @@ public class BaseMessage {
 					+ " bytes");
 		}
 
-		buffer = new InputBuffer(in, length != 0 ? length : 1, length);
+		int chunkSize = 1024;
+
+		if (length > 100_000) {
+			chunkSize = 1024 * 1024;
+		}
+
+		buffer = new InputBuffer(in, chunkSize, length);
 		byte[] payloadBytes = buffer.get(0, length);
 
 		if (!Arrays.equals(checksum, Digest.sha512(payloadBytes, 4))) {
