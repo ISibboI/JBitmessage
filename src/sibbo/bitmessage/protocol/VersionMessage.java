@@ -28,10 +28,10 @@ public class VersionMessage extends P2PMessage {
 	private long timestamp;
 
 	/** The address of the receiver. */
-	private NetworkAddressMessage receiver;
+	private SimpleNetworkAddressMessage receiver;
 
 	/** The address of the sender. */
-	private NetworkAddressMessage sender;
+	private SimpleNetworkAddressMessage sender;
 
 	/**
 	 * Random nonce used to detect connections to self. (See protocol
@@ -57,8 +57,9 @@ public class VersionMessage extends P2PMessage {
 	 * @param streams The streams the sender is interested in.
 	 */
 	public VersionMessage(NodeServicesMessage services, long timestamp,
-			NetworkAddressMessage receiver, NetworkAddressMessage sender,
-			long nonce, String userAgent, long[] streams) {
+			SimpleNetworkAddressMessage receiver,
+			SimpleNetworkAddressMessage sender, long nonce, String userAgent,
+			long[] streams) {
 		this.services = services;
 		this.timestamp = timestamp;
 		this.receiver = receiver;
@@ -76,11 +77,11 @@ public class VersionMessage extends P2PMessage {
 		return timestamp;
 	}
 
-	public NetworkAddressMessage getReceiver() {
+	public SimpleNetworkAddressMessage getReceiver() {
 		return receiver;
 	}
 
-	public NetworkAddressMessage getSender() {
+	public SimpleNetworkAddressMessage getSender() {
 		return sender;
 	}
 
@@ -119,10 +120,10 @@ public class VersionMessage extends P2PMessage {
 		timestamp = Util.getLong(b.get(0, 8));
 		b = b.getSubBuffer(8);
 
-		receiver = new NetworkAddressMessage(b);
+		receiver = new SimpleNetworkAddressMessage(b);
 		b = b.getSubBuffer(receiver.length());
 
-		sender = new NetworkAddressMessage(b);
+		sender = new SimpleNetworkAddressMessage(b);
 		b = b.getSubBuffer(sender.length());
 
 		nonce = Util.getLong(b.get(0, 8));

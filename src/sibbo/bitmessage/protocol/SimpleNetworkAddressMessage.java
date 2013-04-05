@@ -15,15 +15,9 @@ import java.util.logging.Logger;
  * @author Sebastian Schmidt
  * @version 1.0
  */
-public class NetworkAddressMessage extends Message {
+public class SimpleNetworkAddressMessage extends Message {
 	private static final Logger LOG = Logger
 			.getLogger(NetworkAddressMessage.class.getName());
-
-	/** Timestamp describing when the node with this address was last seen. */
-	private int time;
-
-	/** The stream number of the node described by this network address. */
-	private int stream;
 
 	/** Bitfield of features that are enabled by this node. */
 	private NodeServicesMessage services;
@@ -37,19 +31,13 @@ public class NetworkAddressMessage extends Message {
 	/**
 	 * Creates a new network address message describing a node.
 	 * 
-	 * @param time The time the node was last seen.
-	 * @param stream The stream the node belongs to.
 	 * @param services The services the node has enabled.
 	 * @param ip The ip of the node.
 	 * @param port The port of the node.
 	 */
-	public NetworkAddressMessage(int time, int stream,
-			NodeServicesMessage services, InetAddress ip, int port) {
+	public SimpleNetworkAddressMessage(NodeServicesMessage services,
+			InetAddress ip, int port) {
 		Objects.requireNonNull(ip, "ip must not be null!");
-
-		if (stream == 0) {
-			throw new IllegalArgumentException("stream must not be 0.");
-		}
 
 		if (port < 1 || port > 65535) {
 			throw new IllegalArgumentException(
@@ -61,8 +49,6 @@ public class NetworkAddressMessage extends Message {
 					"A node must have the NODE_NETWORK service enabled!");
 		}
 
-		this.time = time;
-		this.stream = stream;
 		this.services = services;
 		this.ip = ip;
 		this.port = port;
@@ -71,17 +57,13 @@ public class NetworkAddressMessage extends Message {
 	/**
 	 * {@link Message#Message(InputBuffer)}
 	 */
-	public NetworkAddressMessage(InputBuffer b) throws IOException,
+	public SimpleNetworkAddressMessage(InputBuffer b) throws IOException,
 			ParsingException {
 		super(b);
 	}
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
-		time = Util.getInt(b.get(0, 4));
-		stream = Util.getInt(b.get(4, 4));
-		b = b.getSubBuffer(8);
-
 		services = new NodeServicesMessage(b);
 		b = b.getSubBuffer(services.length());
 
@@ -123,8 +105,6 @@ public class NetworkAddressMessage extends Message {
 		ByteArrayOutputStream b = new ByteArrayOutputStream(34);
 
 		try {
-			b.write(Util.getBytes(time));
-			b.write(Util.getBytes(stream));
 			b.write(services.getBytes());
 
 			byte[] ip = this.ip.getAddress();
@@ -150,14 +130,6 @@ public class NetworkAddressMessage extends Message {
 		}
 
 		return b.toByteArray();
-	}
-
-	public int getTime() {
-		return time;
-	}
-
-	public int getStream() {
-		return stream;
 	}
 
 	public NodeServicesMessage getServices() {
@@ -192,6 +164,6 @@ public class NetworkAddressMessage extends Message {
 	}
 
 	public int length() {
-		return 34;
+		return 26;
 	}
 }
