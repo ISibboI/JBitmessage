@@ -75,4 +75,36 @@ public final class Digest {
 			return null;
 		}
 	}
+
+	/**
+	 * Returns the ripemd160 sum of the given data.
+	 * 
+	 * @param data The data.
+	 * @return The ripemd160 sum of the given data.
+	 */
+	public static byte[] ripemd160(byte[] data) {
+		MessageDigest ripemd160;
+
+		try {
+			ripemd160 = MessageDigest.getInstance("ripemd160");
+
+			return ripemd160.digest(data);
+		} catch (NoSuchAlgorithmException e) {
+			LOG.log(Level.SEVERE, "ripemd160 not supported!", e);
+			System.exit(1);
+			return null;
+		}
+	}
+
+	/**
+	 * Calculates the digest of the given key pair.
+	 * 
+	 * @param publicSigningKey The public signing key.
+	 * @param publicEncryptionKey The public encryption key.
+	 * @return The digest of the given key pair.
+	 */
+	public static byte[] keyDigest(byte[] publicSigningKey,
+			byte[] publicEncryptionKey) {
+		return ripemd160(sha512(publicSigningKey, publicEncryptionKey));
+	}
 }
