@@ -177,7 +177,7 @@ public class BaseMessage {
 
 		int chunkSize = 1024;
 
-		if (length > 100_000) {
+		if (length > 1_000_000) {
 			chunkSize = 1024 * 1024;
 		}
 
