@@ -90,7 +90,7 @@ public class NetworkAddressMessage extends Message {
 		try {
 			if (isIpv4(ipBytes)) {
 				ip = InetAddress.getByAddress(Arrays.copyOfRange(ipBytes, 12,
-						15));
+						16));
 			} else {
 				ip = InetAddress.getByAddress(ipBytes);
 			}
