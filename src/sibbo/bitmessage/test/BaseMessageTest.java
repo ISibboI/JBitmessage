@@ -9,18 +9,18 @@ import sibbo.bitmessage.Options;
 import sibbo.bitmessage.network.protocol.BaseMessage;
 import sibbo.bitmessage.network.protocol.P2PMessage;
 import sibbo.bitmessage.network.protocol.ParsingException;
-import sibbo.bitmessage.network.protocol.VerAckMessage;
+import sibbo.bitmessage.network.protocol.VerackMessage;
 
 public class BaseMessageTest {
 	private static final Logger LOG = Logger.getLogger(BaseMessageTest.class
 			.getName());
 
 	public static void main(String[] args) throws IOException, ParsingException {
-		P2PMessage m = new VerAckMessage();
+		P2PMessage m = new VerackMessage();
 
 		BaseMessage b = new BaseMessage(m);
 		BaseMessage c = new BaseMessage(new ByteArrayInputStream(b.getBytes()),
-				Options.getInstance().getMaxMessageLength());
+				Options.getInstance().getInt("protocol.maxMessageLength"));
 
 		if (!c.getCommand().equals(b.getCommand())) {
 			System.out.println("Wrong command: " + c.getCommand() + " != "

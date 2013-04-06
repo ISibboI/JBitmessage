@@ -36,6 +36,7 @@ public class CryptManager {
 	 */
 	public KeyDataPair tryDecryption(byte[] encrypted) {
 		return null;
+		// TODO Fill
 	}
 
 	/**
@@ -66,9 +67,12 @@ public class CryptManager {
 
 		BigInteger powTarget = BigInteger.valueOf(2);
 		powTarget = powTarget.pow(64);
-		powTarget = powTarget.divide(BigInteger.valueOf((length
-				+ Options.getInstance().getPOWPayloadLengthExtraBytes() + 8)
-				* Options.getInstance().getPOWAverageNonceTrialsPerByte()));
+		powTarget = powTarget.divide(BigInteger
+				.valueOf((length
+						+ Options.getInstance().getInt(
+								"pow.payloadLengthExtraBytes") + 8)
+						* Options.getInstance().getInt(
+								"pow.averageNonceTrialsPerByte")));
 
 		// Note that we are dividing through at least 8, so that the value is
 		// smaller than 2^61 and fits perfectly into a long.
@@ -84,8 +88,8 @@ public class CryptManager {
 	 */
 	public static byte[] doPOW(byte[] payload) {
 		POWCalculator pow = new POWCalculator(getPOWTarget(payload.length),
-				Digest.sha512(payload), Options.getInstance()
-						.getPOWSystemLoad());
+				Digest.sha512(payload), Options.getInstance().getInt(
+						"pow.systemLoad"));
 		return pow.execute();
 	}
 }

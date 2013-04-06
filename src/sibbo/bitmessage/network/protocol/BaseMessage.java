@@ -30,7 +30,7 @@ public class BaseMessage {
 
 	static {
 		COMMANDS.put(VersionMessage.COMMAND, VersionMessage.class);
-		COMMANDS.put(VerAckMessage.COMMAND, VerAckMessage.class);
+		COMMANDS.put(VerackMessage.COMMAND, VerackMessage.class);
 		COMMANDS.put(AddrMessage.COMMAND, AddrMessage.class);
 		COMMANDS.put(InvMessage.COMMAND, InvMessage.class);
 		COMMANDS.put(GetdataMessage.COMMAND, GetdataMessage.class);
@@ -195,7 +195,8 @@ public class BaseMessage {
 				throw new ParsingException("Unknown command: " + command);
 			}
 
-			System.out.println(Arrays.toString(buffer.get(0, buffer.length())));
+			// System.out.println(Arrays.toString(buffer.get(0,
+			// buffer.length())));
 
 			Constructor<? extends P2PMessage> constructor = cPayload
 					.getConstructor(InputBuffer.class);

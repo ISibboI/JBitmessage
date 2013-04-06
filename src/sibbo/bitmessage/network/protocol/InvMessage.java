@@ -44,7 +44,8 @@ public class InvMessage extends P2PMessage {
 		b = b.getSubBuffer(vLength.length());
 		long length = vLength.getLong();
 
-		if (length < 0 || length > Options.getInstance().getMaxInvLength()) {
+		if (length < 0
+				|| length > Options.getInstance().getInt("pow.maxInvLength")) {
 			throw new ParsingException("Too much inventory vectors: " + length);
 		}
 
