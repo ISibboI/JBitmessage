@@ -15,8 +15,6 @@ import java.util.logging.Logger;
 
 import sibbo.bitmessage.crypt.Digest;
 
-import com.sun.org.apache.xml.internal.security.utils.Base64;
-
 /**
  * Wraps any kind of message that can be sent over the network.
  * 
@@ -211,10 +209,15 @@ public class BaseMessage {
 			System.out.println("payloadBytes != length!");
 		}
 
+		if (!Arrays.equals(checksum, Digest.sha512(input, 4))) {
+			LOG.severe("Wrong checksum!");
+			System.out.println(Arrays.toString(headBuffer.get(0, 24)));
+		}
+
 		if (!Arrays.equals(checksum, Digest.sha512(payloadBytes, 4))) {
 			LOG.severe("Wrong checksum:\nlength: " + length + "\n"
 					+ Arrays.toString(headBuffer.get(0, 24)) + "\n"
-			/* + Base64.encode(payloadBytes) */);
+					+ Arrays.toString(Arrays.copyOf(payloadBytes, 8)));
 
 			byte currentByte;
 			int position = 0;
@@ -238,11 +241,11 @@ public class BaseMessage {
 			}
 
 			System.out.println("Bytes to next message: " + count);
-			System.exit(1);
+			// System.exit(1);
 
 			throw new ParsingException("Wrong digest for payload! command: "
 					+ command + ", length: " + length + ", message: "
-					+ Base64.encode(payloadBytes));
+			/* + Base64.encode(payloadBytes) */);
 		}
 
 		try {

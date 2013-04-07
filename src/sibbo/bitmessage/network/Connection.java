@@ -223,11 +223,13 @@ public class Connection implements Runnable {
 
 		// Parse an incoming message.
 		try {
+			InputStream logIn = new LoggingInputStream(in);
+
 			while (!stop) {
 				BaseMessage b = null;
 
 				try {
-					b = new BaseMessage(in, Options.getInstance().getInt(
+					b = new BaseMessage(logIn, Options.getInstance().getInt(
 							"protocol.maxMessageLength"));
 				} catch (SocketTimeoutException e) {
 					sendMessages();
