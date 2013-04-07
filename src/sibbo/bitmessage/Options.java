@@ -15,6 +15,7 @@ public class Options extends Properties {
 
 		defaults.setProperty("protocol.maxMessageLength", 10 * 1024 * 1024);
 		defaults.setProperty("protocol.maxInvLength", 50_000);
+		defaults.setProperty("protocol.maxAddrLength", 1_000);
 		defaults.setProperty("protocol.services", 1);
 		defaults.setProperty("protocol.remoteServices", 1);
 		defaults.setProperty("pow.averageNonceTrialsPerByte", 320);

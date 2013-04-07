@@ -1,5 +1,6 @@
 package sibbo.bitmessage.network.protocol;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,6 +14,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import sibbo.bitmessage.crypt.Digest;
+
+import com.sun.org.apache.xml.internal.security.utils.Base64;
 
 /**
  * Wraps any kind of message that can be sent over the network.
@@ -35,7 +38,9 @@ public class BaseMessage {
 		COMMANDS.put(InvMessage.COMMAND, InvMessage.class);
 		COMMANDS.put(GetdataMessage.COMMAND, GetdataMessage.class);
 		COMMANDS.put(GetpubkeyMessage.COMMAND, GetpubkeyMessage.class);
-		// TODO Fill COMMANDS
+		COMMANDS.put(PubkeyMessage.COMMAND, PubkeyMessage.class);
+		COMMANDS.put(MsgMessage.COMMAND, MsgMessage.class);
+		COMMANDS.put(BroadcastMessage.COMMAND, BroadcastMessage.class);
 	}
 
 	/** Identifies the bitmessage protocol. */
@@ -179,13 +184,65 @@ public class BaseMessage {
 
 		if (length > 1_000_000) {
 			chunkSize = 1024 * 1024;
+		} else if (length > 100_000) {
+			chunkSize = 128 * 1024;
 		}
 
-		buffer = new InputBuffer(in, chunkSize, length);
+		InputBuffer headBuffer = buffer;
+
+		byte[] input = new byte[length];
+		int offset = 0;
+
+		while (offset < input.length) {
+			int length = in.read(input, offset, input.length - offset);
+
+			if (length == -1) {
+				throw new IOException("End of stream.");
+			} else {
+				offset += length;
+			}
+		}
+
+		buffer = new InputBuffer(new ByteArrayInputStream(input), chunkSize,
+				length);
 		byte[] payloadBytes = buffer.get(0, length);
 
+		if (payloadBytes.length != length) {
+			System.out.println("payloadBytes != length!");
+		}
+
 		if (!Arrays.equals(checksum, Digest.sha512(payloadBytes, 4))) {
-			throw new ParsingException("Wrong digest for payload!");
+			LOG.severe("Wrong checksum:\nlength: " + length + "\n"
+					+ Arrays.toString(headBuffer.get(0, 24)) + "\n"
+			/* + Base64.encode(payloadBytes) */);
+
+			byte currentByte;
+			int position = 0;
+			int count = 0;
+
+			while (position < 4) {
+				currentByte = (byte) in.read();
+				if (position == 0 && currentByte == -23) {
+					position = 1;
+				} else if (position == 1 && currentByte == -66) {
+					position = 2;
+				} else if (position == 2 && currentByte == -76) {
+					position = 3;
+				} else if (position == 3 && currentByte == -39) {
+					position = 4;
+				} else {
+					count++;
+					count += position;
+					position = 0;
+				}
+			}
+
+			System.out.println("Bytes to next message: " + count);
+			System.exit(1);
+
+			throw new ParsingException("Wrong digest for payload! command: "
+					+ command + ", length: " + length + ", message: "
+					+ Base64.encode(payloadBytes));
 		}
 
 		try {
@@ -203,7 +260,7 @@ public class BaseMessage {
 			payload = constructor.newInstance(buffer);
 		} catch (NoSuchMethodException e) {
 			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
-					+ " is missing a Constructor(InputStream)!", e);
+					+ " is missing a Constructor(InputBuffer)!", e);
 			System.exit(1);
 		} catch (InstantiationException e) {
 			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command

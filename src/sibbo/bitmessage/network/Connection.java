@@ -6,15 +6,24 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import sibbo.bitmessage.LoggingInitializer;
 import sibbo.bitmessage.Options;
+import sibbo.bitmessage.data.Datastore;
+import sibbo.bitmessage.network.protocol.AddrMessage;
 import sibbo.bitmessage.network.protocol.BaseMessage;
+import sibbo.bitmessage.network.protocol.GetdataMessage;
+import sibbo.bitmessage.network.protocol.InvMessage;
+import sibbo.bitmessage.network.protocol.InventoryVectorMessage;
 import sibbo.bitmessage.network.protocol.NetworkAddressMessage;
 import sibbo.bitmessage.network.protocol.NodeServicesMessage;
 import sibbo.bitmessage.network.protocol.P2PMessage;
@@ -56,7 +65,16 @@ public class Connection implements Runnable {
 	private ConnectionListener listener;
 
 	/** Holds objects that should be advertised as soon as possible. */
-	private Queue<P2PMessage> objectsToAdvertise = new LinkedList<>();
+	private Queue<POWMessage> objectsBuffer = new LinkedList<>();
+
+	/** Nodes that should be advertised. */
+	private Queue<NetworkAddressMessage> nodeBuffer = new LinkedList<>();
+
+	/** The last time an addr message was sent. */
+	private long lastAddrSent;
+
+	/** The last time an inv message was sent. */
+	private long lastInvSent;
 
 	/** If true, the connection is aborted as fast as possible. */
 	private volatile boolean stop = false;
@@ -81,6 +99,9 @@ public class Connection implements Runnable {
 	 * version first.
 	 */
 	private boolean client;
+
+	/** True if all initially known addresses have been sent. */
+	private boolean addrSent;
 
 	/**
 	 * Creates and starts a new Connection with the agenda FOLLOW_STREAM.
@@ -203,27 +224,53 @@ public class Connection implements Runnable {
 		// Parse an incoming message.
 		try {
 			while (!stop) {
-				BaseMessage b = new BaseMessage(in, Options.getInstance()
-						.getInt("protocol.maxMessageLength"));
+				BaseMessage b = null;
+
+				try {
+					b = new BaseMessage(in, Options.getInstance().getInt(
+							"protocol.maxMessageLength"));
+				} catch (SocketTimeoutException e) {
+					sendMessages();
+					continue;
+				} catch (ParsingException e) { // TODO REMOVE!!!
+					e.printStackTrace();
+					continue;
+				}
 
 				P2PMessage m = b.getPayload();
 
+				LOG.log(Level.FINE, "Received: " + b.getCommand());
+
 				switch (m.getCommand()) {
-					case "version":
+					case VersionMessage.COMMAND:
 						receiveVersion((VersionMessage) m, out);
 						break;
 
-					case "verack":
+					case VerackMessage.COMMAND:
 						receiveVerack((VerackMessage) m, out);
 						break;
 
+					case AddrMessage.COMMAND:
+						receiveAddr((AddrMessage) m, out);
+						break;
+
+					case InvMessage.COMMAND:
+						receiveInv((InvMessage) m, out);
+						break;
+
 					default:
-						LOG.log(Level.WARNING,
-								"Unknown command: " + m.getCommand());
-						close(s);
-						listener.connectionAborted(this);
-						return;
+						if (m instanceof POWMessage) {
+							listener.receivedObject((POWMessage) m);
+						} else {
+							LOG.log(Level.WARNING,
+									"Unknown command: " + m.getCommand());
+							close(s);
+							listener.connectionAborted(this);
+							return;
+						}
 				}
+
+				sendMessages();
 			}
 		} catch (IOException e) {
 			LOG.log(Level.INFO, "Connection to " + address.getHostAddress()
@@ -231,11 +278,62 @@ public class Connection implements Runnable {
 			close(s);
 			listener.connectionAborted(this);
 			return;
-		} catch (ParsingException e) {
-			LOG.log(Level.WARNING, "Parsing error", e);
-			close(s);
-			listener.connectionAborted(this);
+		}
+		// TODO UNCOMMENT!!!
+		/*
+		 * catch (ParsingException e) { LOG.log(Level.WARNING, "Parsing error",
+		 * e); close(s); listener.connectionAborted(this); return; }
+		 */
+	}
+
+	private void receiveInv(InvMessage m, OutputStream out) throws IOException {
+		List<InventoryVectorMessage> l = Datastore.getInstance()
+				.filterObjectsThatWeAlreadyHave(m.getInventoryVectors());
+
+		sendGetdata(l, out);
+	}
+
+	private void sendGetdata(List<InventoryVectorMessage> l, OutputStream out)
+			throws IOException {
+		GetdataMessage m = new GetdataMessage(l);
+		BaseMessage b = new BaseMessage(m);
+		out.write(b.getBytes());
+		LOG.fine("Sent: getdata (" + l.size() + ")");
+	}
+
+	private void sendMessages() {
+		// TODO Auto-generated method stub
+	}
+
+	private void receiveAddr(AddrMessage m, OutputStream out)
+			throws IOException {
+		listener.receivedNodes(m.getAddresses());
+
+		sendAddr(out);
+	}
+
+	private void sendAddr(OutputStream out) throws IOException {
+		if (addrSent) {
 			return;
+		} else {
+			addrSent = true;
+		}
+
+		List<NetworkAddressMessage> addresses = Datastore.getInstance()
+				.getNodes(streams);
+
+		while (!addresses.isEmpty()) {
+			List<NetworkAddressMessage> tmp = new ArrayList<>(1000);
+
+			for (int i = 0; i < 1000 && !addresses.isEmpty(); i++) {
+				tmp.add(addresses.get(addresses.size() - 1));
+			}
+
+			AddrMessage addr = new AddrMessage(tmp);
+			BaseMessage b = new BaseMessage(addr);
+			out.write(b.getBytes());
+
+			LOG.fine("Sent: addr");
 		}
 	}
 
@@ -266,6 +364,7 @@ public class Connection implements Runnable {
 
 	private void sendVerack(OutputStream out) throws IOException {
 		out.write(new BaseMessage(new VerackMessage()).getBytes());
+		LOG.fine("Sent: verack");
 	}
 
 	private void sendVersion(OutputStream out) throws IOException {
@@ -286,6 +385,7 @@ public class Connection implements Runnable {
 			BaseMessage m = new BaseMessage(version);
 
 			out.write(m.getBytes());
+			LOG.fine("Sent: version");
 		} catch (UnknownHostException e) {
 			LOG.log(Level.SEVERE, "Localhost is unknown!", e);
 			System.exit(1);
@@ -301,6 +401,8 @@ public class Connection implements Runnable {
 	}
 
 	public static void main(String[] args) throws UnknownHostException {
+		LoggingInitializer.initializeLogging();
+
 		Connection c = new Connection(InetAddress.getByName("127.0.0.1"), 8444,
 				1L, new ConnectionListener() {
 					@Override
@@ -309,7 +411,8 @@ public class Connection implements Runnable {
 					}
 
 					@Override
-					public void receivedNode(NetworkAddressMessage[] m) {
+					public void receivedNodes(
+							List<? extends NetworkAddressMessage> m) {
 						System.out.println("receivedNode()");
 					}
 

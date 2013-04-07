@@ -2,6 +2,9 @@ package sibbo.bitmessage.network.protocol;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -21,15 +24,15 @@ public class GetdataMessage extends P2PMessage {
 	public static final String COMMAND = "getdata";
 
 	/** The inventory vectors. */
-	private InventoryVectorMessage[] inv;
+	private List<InventoryVectorMessage> inv;
 
 	/**
 	 * Creates a new getdata message with the given inventory vectors.
 	 * 
 	 * @param inv The inventory vectors.
 	 */
-	public GetdataMessage(InventoryVectorMessage[] inv) {
-		this.inv = inv;
+	public GetdataMessage(Collection<? extends InventoryVectorMessage> inv) {
+		this.inv = new ArrayList<>(inv);
 	}
 
 	@Override
@@ -50,11 +53,12 @@ public class GetdataMessage extends P2PMessage {
 			throw new ParsingException("Too much inventory vectors: " + length);
 		}
 
-		inv = new InventoryVectorMessage[(int) length];
+		inv = new ArrayList<>((int) length);
 
-		for (int i = 0; i < inv.length; i++) {
-			inv[i] = new InventoryVectorMessage(b);
-			b = b.getSubBuffer(inv[i].length());
+		for (int i = 0; i < length; i++) {
+			InventoryVectorMessage ivm = new InventoryVectorMessage(b);
+			inv.add(ivm);
+			b = b.getSubBuffer(ivm.length());
 		}
 	}
 
@@ -63,7 +67,7 @@ public class GetdataMessage extends P2PMessage {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
 		try {
-			b.write(new VariableLengthIntegerMessage(inv.length).getBytes());
+			b.write(new VariableLengthIntegerMessage(inv.size()).getBytes());
 
 			for (InventoryVectorMessage m : inv) {
 				b.write(m.getBytes());
@@ -76,7 +80,7 @@ public class GetdataMessage extends P2PMessage {
 		return b.toByteArray();
 	}
 
-	public InventoryVectorMessage[] getInventoryVectors() {
-		return inv;
+	public List<InventoryVectorMessage> getInventoryVectors() {
+		return new ArrayList<>(inv);
 	}
 }

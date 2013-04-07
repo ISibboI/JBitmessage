@@ -6,6 +6,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import sibbo.bitmessage.crypt.CryptManager;
+import sibbo.bitmessage.crypt.Digest;
 
 /**
  * A message supertype for messages that need POW with timestamp.
@@ -116,5 +117,15 @@ public abstract class POWMessage extends P2PMessage {
 
 	public int getTime() {
 		return time;
+	}
+
+	/**
+	 * Calculates the hash of this object. This method uses two rounds of sha512
+	 * and returns the first 32 bytes of the sum.
+	 * 
+	 * @return The first 32 bytes of a 2-rounds sha512 hash of the object.
+	 */
+	public byte[] getHash() {
+		return Digest.sha512(Digest.sha512(getBytes()), 32);
 	}
 }
