@@ -10,31 +10,31 @@ public class CryptManager {
 	private static final Logger LOG = Logger.getLogger(CryptManager.class
 			.getName());
 
-	private static final CryptManager instance = new CryptManager();
-
-	public static CryptManager getInstance() {
-		return instance;
-	}
-
-	public static boolean checkSignature(byte[] data, byte[] signature) {
+	/**
+	 * Checks if the given data was signed with the private key belonging to the
+	 * given public key.
+	 * 
+	 * @param data The signed data.
+	 * @param signature The signature.
+	 * @param key The public signing key.
+	 * @return True if the signature is valid, false otherwise.
+	 */
+	public static boolean checkSignature(byte[] data, byte[] signature,
+			byte[] key) {
 		// TODO Auto-generated method stub
-		throw new RuntimeException("Not yet implemented");
-	}
-
-	private CryptManager() {
-	}
-
-	public void init() {
-
+		return true;
 	}
 
 	/**
-	 * Tries to decrypt the given data using all known private keys.
+	 * Tries to decrypt the given data using the given private key.
 	 * 
-	 * @param encrypted
-	 * @return
+	 * @param encrypted The data to decrypt.
+	 * @param key The key to try.
+	 * @return A KeyDataPair containing the key that was used for decryption and
+	 *         the decrypted data or null, if the data could not be decrypted
+	 *         with the given key.
 	 */
-	public KeyDataPair tryDecryption(byte[] encrypted) {
+	public static KeyDataPair tryDecryption(byte[] encrypted, byte[] key) {
 		return null;
 		// TODO Fill
 	}

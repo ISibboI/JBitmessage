@@ -1,6 +1,7 @@
 package sibbo.bitmessage.network.protocol;
 
 import java.util.HashMap;
+import java.util.Objects;
 
 /**
  * A message encoding type.
@@ -11,7 +12,7 @@ import java.util.HashMap;
 public enum MessageEncoding {
 	IGNORE(0), TRIVIAL(1), SIMPLE(2);
 
-	private static final HashMap<Long, MessageEncoding> MAP = new HashMap<>();
+	private static HashMap<Long, MessageEncoding> MAP;
 
 	/**
 	 * Returns the message encoding that is associated with the given constant.
@@ -31,6 +32,13 @@ public enum MessageEncoding {
 	}
 
 	private void put(long constant, MessageEncoding messageEncoding) {
+		Objects.requireNonNull(messageEncoding,
+				"messageEncoding must not be null.");
+
+		if (MAP == null) {
+			MAP = new HashMap<>();
+		}
+
 		MAP.put(constant, messageEncoding);
 	}
 

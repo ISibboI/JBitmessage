@@ -15,6 +15,7 @@ public class Options extends Properties {
 
 		defaults.setProperty("protocol.maxMessageLength", 10 * 1024 * 1024);
 		defaults.setProperty("protocol.maxInvLength", 50_000);
+		defaults.setProperty("protocol.maxAddrLength", 1_000);
 		defaults.setProperty("protocol.services", 1);
 		defaults.setProperty("protocol.remoteServices", 1);
 		defaults.setProperty("pow.averageNonceTrialsPerByte", 320);
@@ -23,6 +24,9 @@ public class Options extends Properties {
 		defaults.setProperty("network.connectTimeout", 5_000);
 		defaults.setProperty("network.timeout", 10_000);
 		defaults.setProperty("network.listenPort", 8443);
+		defaults.setProperty("network.passiveMode.maxConnections", 8);
+		defaults.setProperty("network.activeMode.maxConnections", 16);
+		defaults.setProperty("network.activeMode.stopListenConnectionCount", 32);
 		defaults.setProperty(
 				"network.userAgent",
 				"/" + defaults.getString("global.name") + ":"

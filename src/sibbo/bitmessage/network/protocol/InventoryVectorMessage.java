@@ -1,6 +1,7 @@
 package sibbo.bitmessage.network.protocol;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.logging.Logger;
 
@@ -56,5 +57,21 @@ public class InventoryVectorMessage extends Message {
 
 	public int length() {
 		return 32;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof InventoryVectorMessage) {
+			InventoryVectorMessage ivm = (InventoryVectorMessage) o;
+
+			return Arrays.equals(ivm.hash, hash);
+		} else {
+			return false;
+		}
+	}
+
+	@Override
+	public int hashCode() {
+		return Util.getInt(hash);
 	}
 }

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import sibbo.bitmessage.crypt.BMAddress;
 import sibbo.bitmessage.crypt.CryptManager;
 
 /**
@@ -85,6 +86,8 @@ public class UnencryptedMessageDataMessage extends Message {
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
+		InputBuffer signed = b.getSubBuffer(0);
+
 		VariableLengthIntegerMessage messageVersion = new VariableLengthIntegerMessage(
 				b);
 		b = b.getSubBuffer(messageVersion.length());
@@ -99,7 +102,7 @@ public class UnencryptedMessageDataMessage extends Message {
 		b = b.getSubBuffer(vAddressVersion.length());
 		addressVersion = vAddressVersion.getLong();
 
-		if (!BitMessageAddress.isSupported(addressVersion)) {
+		if (!BMAddress.isSupported(addressVersion)) {
 			throw new ParsingException("Unknown address version: "
 					+ addressVersion);
 		}
@@ -147,7 +150,11 @@ public class UnencryptedMessageDataMessage extends Message {
 
 		signature = b.get(0, (int) length);
 
-		CryptManager.checkSignature(getBytesWithoutSignature(), signature);
+		if (!CryptManager.checkSignature(
+				signed.get(0, b.getOffset() - signed.getOffset()), signature,
+				publicSigningKey)) {
+			throw new ParsingException("Wrong signature.");
+		}
 	}
 
 	private byte[] getBytesWithoutSignature() {
@@ -190,5 +197,37 @@ public class UnencryptedMessageDataMessage extends Message {
 		}
 
 		return b.toByteArray();
+	}
+
+	public long getAddressVersion() {
+		return addressVersion;
+	}
+
+	public long getStream() {
+		return stream;
+	}
+
+	public BehaviorMessage getBehavior() {
+		return behavior;
+	}
+
+	public byte[] getPublicSigningKey() {
+		return publicSigningKey;
+	}
+
+	public byte[] getPublicEncryptionKey() {
+		return publicEncryptionKey;
+	}
+
+	public byte[] getDestinationRipe() {
+		return destinationRipe;
+	}
+
+	public MailMessage getMessage() {
+		return message;
+	}
+
+	public BaseMessage getAcknowledgment() {
+		return acknowledgment;
 	}
 }

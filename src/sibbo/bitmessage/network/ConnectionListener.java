@@ -1,5 +1,8 @@
 package sibbo.bitmessage.network;
 
+import java.util.List;
+
+import sibbo.bitmessage.network.protocol.InventoryVectorMessage;
 import sibbo.bitmessage.network.protocol.NetworkAddressMessage;
 import sibbo.bitmessage.network.protocol.POWMessage;
 
@@ -36,7 +39,14 @@ public interface ConnectionListener {
 	/**
 	 * The connection received a list of new nodes.
 	 * 
-	 * @param m A list of nodes.
+	 * @param list A list of nodes.
 	 */
-	void receivedNode(NetworkAddressMessage[] m);
+	void receivedNodes(List<? extends NetworkAddressMessage> list);
+
+	/**
+	 * The connection received a list of object hashes.
+	 * 
+	 * @param inventoryVectors A list of object hashes.
+	 */
+	void advertisedObjects(List<InventoryVectorMessage> inventoryVectors);
 }

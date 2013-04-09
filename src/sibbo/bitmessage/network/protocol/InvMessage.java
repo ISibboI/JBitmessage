@@ -2,6 +2,10 @@ package sibbo.bitmessage.network.protocol;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -21,15 +25,29 @@ public class InvMessage extends P2PMessage {
 	public static final String COMMAND = "inv";
 
 	/** The inventory vectors. */
-	private InventoryVectorMessage[] inv;
+	private List<InventoryVectorMessage> inv;
 
 	/**
 	 * Creates a new inv message with the given inventory vectors.
 	 * 
 	 * @param inv The inventory vectors.
 	 */
-	public InvMessage(InventoryVectorMessage[] inv) {
-		this.inv = inv;
+	public InvMessage(Collection<? extends InventoryVectorMessage> inv) {
+		Objects.requireNonNull(inv, "inv must not be null.");
+
+		if (inv.size() > Options.getInstance().getInt("protocol.maxInvLength")) {
+			throw new IllegalArgumentException("Too much inventory vectors: "
+					+ inv.size());
+		}
+
+		this.inv = new ArrayList<>(inv);
+	}
+
+	/**
+	 * @link {@link Message#Message(InputBuffer)}
+	 */
+	public InvMessage(InputBuffer b) throws IOException, ParsingException {
+		super(b);
 	}
 
 	@Override
@@ -45,15 +63,17 @@ public class InvMessage extends P2PMessage {
 		long length = vLength.getLong();
 
 		if (length < 0
-				|| length > Options.getInstance().getInt("pow.maxInvLength")) {
+				|| length > Options.getInstance().getInt(
+						"protocol.maxInvLength")) {
 			throw new ParsingException("Too much inventory vectors: " + length);
 		}
 
-		inv = new InventoryVectorMessage[(int) length];
+		inv = new ArrayList<>((int) length);
 
-		for (int i = 0; i < inv.length; i++) {
-			inv[i] = new InventoryVectorMessage(b);
-			b = b.getSubBuffer(inv[i].length());
+		for (int i = 0; i < length; i++) {
+			InventoryVectorMessage ivm = new InventoryVectorMessage(b);
+			inv.add(ivm);
+			b = b.getSubBuffer(ivm.length());
 		}
 	}
 
@@ -62,7 +82,7 @@ public class InvMessage extends P2PMessage {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
 		try {
-			b.write(new VariableLengthIntegerMessage(inv.length).getBytes());
+			b.write(new VariableLengthIntegerMessage(inv.size()).getBytes());
 
 			for (InventoryVectorMessage m : inv) {
 				b.write(m.getBytes());
@@ -75,7 +95,7 @@ public class InvMessage extends P2PMessage {
 		return b.toByteArray();
 	}
 
-	public InventoryVectorMessage[] getInventoryVectors() {
-		return inv;
+	public List<InventoryVectorMessage> getInventoryVectors() {
+		return new ArrayList<>(inv);
 	}
 }

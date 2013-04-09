@@ -35,7 +35,9 @@ public class BaseMessage {
 		COMMANDS.put(InvMessage.COMMAND, InvMessage.class);
 		COMMANDS.put(GetdataMessage.COMMAND, GetdataMessage.class);
 		COMMANDS.put(GetpubkeyMessage.COMMAND, GetpubkeyMessage.class);
-		// TODO Fill COMMANDS
+		COMMANDS.put(PubkeyMessage.COMMAND, PubkeyMessage.class);
+		COMMANDS.put(MsgMessage.COMMAND, MsgMessage.class);
+		COMMANDS.put(BroadcastMessage.COMMAND, BroadcastMessage.class);
 	}
 
 	/** Identifies the bitmessage protocol. */
@@ -179,12 +181,13 @@ public class BaseMessage {
 
 		if (length > 1_000_000) {
 			chunkSize = 1024 * 1024;
+		} else if (length > 100_000) {
+			chunkSize = 128 * 1024;
 		}
 
 		buffer = new InputBuffer(in, chunkSize, length);
-		byte[] payloadBytes = buffer.get(0, length);
 
-		if (!Arrays.equals(checksum, Digest.sha512(payloadBytes, 4))) {
+		if (!Arrays.equals(checksum, Digest.sha512(buffer.get(0, length), 4))) {
 			throw new ParsingException("Wrong digest for payload!");
 		}
 
@@ -195,15 +198,12 @@ public class BaseMessage {
 				throw new ParsingException("Unknown command: " + command);
 			}
 
-			// System.out.println(Arrays.toString(buffer.get(0,
-			// buffer.length())));
-
 			Constructor<? extends P2PMessage> constructor = cPayload
 					.getConstructor(InputBuffer.class);
 			payload = constructor.newInstance(buffer);
 		} catch (NoSuchMethodException e) {
 			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
-					+ " is missing a Constructor(InputStream)!", e);
+					+ " is missing a Constructor(InputBuffer)!", e);
 			System.exit(1);
 		} catch (InstantiationException e) {
 			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
