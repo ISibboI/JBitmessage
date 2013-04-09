@@ -152,6 +152,17 @@ public class InputBuffer {
 		return length;
 	}
 
+	/**
+	 * The offset to the underlying buffer of this input buffer. This is the
+	 * offset that is added to all operations on this buffer. It can be used to
+	 * determine how many bytes have been read since a specific read operation.
+	 * 
+	 * @return The offset to the underlying buffer of this input buffer.
+	 */
+	public int getOffset() {
+		return offset;
+	}
+
 	private class Buffer {
 		private InputStream in;
 		private int size;

@@ -111,4 +111,14 @@ public class BMAddress {
 	public byte[] getPrivateEncryptionKey() {
 		return privateEncryptionKey;
 	}
+
+	/**
+	 * Returns true if the given address version is supported.
+	 * 
+	 * @param addressVersion The address version to check.
+	 * @return True if the given address version is supported.
+	 */
+	public static boolean isSupported(long addressVersion) {
+		return addressVersion == 2;
+	}
 }

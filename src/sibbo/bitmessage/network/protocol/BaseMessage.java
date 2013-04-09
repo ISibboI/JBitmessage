@@ -1,6 +1,5 @@
 package sibbo.bitmessage.network.protocol;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -186,66 +185,10 @@ public class BaseMessage {
 			chunkSize = 128 * 1024;
 		}
 
-		InputBuffer headBuffer = buffer;
+		buffer = new InputBuffer(in, chunkSize, length);
 
-		byte[] input = new byte[length];
-		int offset = 0;
-
-		while (offset < input.length) {
-			int length = in.read(input, offset, input.length - offset);
-
-			if (length == -1) {
-				throw new IOException("End of stream.");
-			} else {
-				offset += length;
-			}
-		}
-
-		buffer = new InputBuffer(new ByteArrayInputStream(input), chunkSize,
-				length);
-		byte[] payloadBytes = buffer.get(0, length);
-
-		if (payloadBytes.length != length) {
-			System.out.println("payloadBytes != length!");
-		}
-
-		if (!Arrays.equals(checksum, Digest.sha512(input, 4))) {
-			LOG.severe("Wrong checksum!");
-			System.out.println(Arrays.toString(headBuffer.get(0, 24)));
-		}
-
-		if (!Arrays.equals(checksum, Digest.sha512(payloadBytes, 4))) {
-			LOG.severe("Wrong checksum:\nlength: " + length + "\n"
-					+ Arrays.toString(headBuffer.get(0, 24)) + "\n"
-					+ Arrays.toString(Arrays.copyOf(payloadBytes, 8)));
-
-			byte currentByte;
-			int position = 0;
-			int count = 0;
-
-			while (position < 4) {
-				currentByte = (byte) in.read();
-				if (position == 0 && currentByte == -23) {
-					position = 1;
-				} else if (position == 1 && currentByte == -66) {
-					position = 2;
-				} else if (position == 2 && currentByte == -76) {
-					position = 3;
-				} else if (position == 3 && currentByte == -39) {
-					position = 4;
-				} else {
-					count++;
-					count += position;
-					position = 0;
-				}
-			}
-
-			System.out.println("Bytes to next message: " + count);
-			// System.exit(1);
-
-			throw new ParsingException("Wrong digest for payload! command: "
-					+ command + ", length: " + length + ", message: "
-			/* + Base64.encode(payloadBytes) */);
+		if (!Arrays.equals(checksum, Digest.sha512(buffer.get(0, length), 4))) {
+			throw new ParsingException("Wrong digest for payload!");
 		}
 
 		try {
@@ -254,9 +197,6 @@ public class BaseMessage {
 			if (cPayload == null) {
 				throw new ParsingException("Unknown command: " + command);
 			}
-
-			// System.out.println(Arrays.toString(buffer.get(0,
-			// buffer.length())));
 
 			Constructor<? extends P2PMessage> constructor = cPayload
 					.getConstructor(InputBuffer.class);

@@ -1,14 +1,17 @@
 package sibbo.bitmessage.data;
 
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
 import sibbo.bitmessage.network.protocol.InventoryVectorMessage;
 import sibbo.bitmessage.network.protocol.NetworkAddressMessage;
+import sibbo.bitmessage.network.protocol.POWMessage;
 
 /**
- * Singleton that manages all persistent data.
+ * Manager for persistent data. Can cache data to reduce the load of the
+ * database.
  * 
  * @author Sebastian Schmidt
  * @version 1.0
@@ -16,15 +19,16 @@ import sibbo.bitmessage.network.protocol.NetworkAddressMessage;
 public class Datastore {
 	private static final Logger LOG = Logger.getLogger(Datastore.class
 			.getName());
+	/** The database. */
+	private Database database;
 
-	private static final Datastore instance = new Datastore();
-
-	public static Datastore getInstance() {
-		return instance;
-	}
-
-	/** Singleton. */
-	private Datastore() {
+	/**
+	 * Creates a new datastore with the given name.
+	 * 
+	 * @param datastorePath The path to the file containing the datastore.
+	 */
+	public Datastore(String datastoreName) {
+		database = new Database(datastoreName);
 	}
 
 	/**
@@ -48,5 +52,25 @@ public class Datastore {
 	public List<InventoryVectorMessage> filterObjectsThatWeAlreadyHave(
 			List<InventoryVectorMessage> inventoryVectors) {
 		return new ArrayList<>(inventoryVectors);
+	}
+
+	public List<POWMessage> getObjects(
+			List<InventoryVectorMessage> inventoryVectors) {
+		return new ArrayList<>();
+	}
+
+	public void removeNodeIfOld(InetAddress address, int port) {
+		// TODO Auto-generated method stub
+	}
+
+	/**
+	 * Adds the given object to the datastore.
+	 * 
+	 * @param m The object to add.
+	 * @return True if the object was added, false if it already exists.
+	 */
+	public boolean put(POWMessage m) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 }

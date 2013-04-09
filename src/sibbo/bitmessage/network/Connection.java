@@ -9,6 +9,7 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -16,7 +17,6 @@ import java.util.Queue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import sibbo.bitmessage.LoggingInitializer;
 import sibbo.bitmessage.Options;
 import sibbo.bitmessage.data.Datastore;
 import sibbo.bitmessage.network.protocol.AddrMessage;
@@ -40,6 +40,8 @@ import sibbo.bitmessage.network.protocol.VersionMessage;
  * <ul>
  * <li>FOLLOW_STREAM: Follows the given stream and its parent and child streams.
  * </li>
+ * <li>FIND_STREAM: Follows all given streams, does not send inv or getdata
+ * messages.</li>
  * </ul>
  * 
  * @author Sebastian Schmidt
@@ -48,6 +50,9 @@ import sibbo.bitmessage.network.protocol.VersionMessage;
 public class Connection implements Runnable {
 	private static final Logger LOG = Logger.getLogger(Connection.class
 			.getName());
+
+	/** The operation mode of this connection. */
+	private Agenda agenda;
 
 	/** The remote address. */
 	private InetAddress address;
@@ -64,17 +69,14 @@ public class Connection implements Runnable {
 	/** The listener to inform if something happens. */
 	private ConnectionListener listener;
 
-	/** Holds objects that should be advertised as soon as possible. */
-	private Queue<POWMessage> objectsBuffer = new LinkedList<>();
+	/** Holds hashes of objects that should be advertised as soon as possible. */
+	private Queue<InventoryVectorMessage> invBuffer = new LinkedList<>();
 
 	/** Nodes that should be advertised. */
 	private Queue<NetworkAddressMessage> nodeBuffer = new LinkedList<>();
 
-	/** The last time an addr message was sent. */
-	private long lastAddrSent;
-
-	/** The last time an inv message was sent. */
-	private long lastInvSent;
+	/** Holds hashes of objects that should be requested. */
+	private Queue<InventoryVectorMessage> requestBuffer = new LinkedList<>();
 
 	/** If true, the connection is aborted as fast as possible. */
 	private volatile boolean stop = false;
@@ -102,6 +104,9 @@ public class Connection implements Runnable {
 
 	/** True if all initially known addresses have been sent. */
 	private boolean addrSent;
+
+	/** The datastore that stores the nodes and objects for this node. */
+	private Datastore datastore;
 
 	/**
 	 * Creates and starts a new Connection with the agenda FOLLOW_STREAM.
@@ -160,6 +165,51 @@ public class Connection implements Runnable {
 		start();
 	}
 
+	/**
+	 * Schedules the advertising of all given objects. If the agenda of this
+	 * connection is FIND_STREAM, this method does nothing.
+	 * 
+	 * @param c The hashes of the objects to advertise.
+	 */
+	public void advertiseObjects(Collection<? extends InventoryVectorMessage> c) {
+		if (agenda != Agenda.FIND_STREAM) {
+			synchronized (invBuffer) {
+				invBuffer.addAll(c);
+			}
+		}
+	}
+
+	/**
+	 * Schedules the advertising of all given nodes. If the agenda of this
+	 * connection is FIND_STREAM, this method does nothing.
+	 * 
+	 * @param c The nodes to advertise.
+	 */
+	public void advertiseNodes(Collection<? extends NetworkAddressMessage> c) {
+		if (agenda != Agenda.FIND_STREAM) {
+			synchronized (nodeBuffer) {
+				nodeBuffer.addAll(c);
+			}
+		}
+	}
+
+	/**
+	 * Schedules the requesting of all given objects. If the agenda of this
+	 * connection is FIND_STREAM, this method does nothing.
+	 * 
+	 * @param c The hashes of the objects to request.
+	 */
+	public void requestObjects(Collection<? extends InventoryVectorMessage> c) {
+		if (agenda != Agenda.FIND_STREAM) {
+			synchronized (requestBuffer) {
+				requestBuffer.addAll(c);
+			}
+		}
+	}
+
+	/**
+	 * Starts this connection.
+	 */
 	private synchronized void start() {
 		if (running) {
 			throw new IllegalStateException(
@@ -223,19 +273,14 @@ public class Connection implements Runnable {
 
 		// Parse an incoming message.
 		try {
-			InputStream logIn = new LoggingInputStream(in);
-
 			while (!stop) {
 				BaseMessage b = null;
 
 				try {
-					b = new BaseMessage(logIn, Options.getInstance().getInt(
+					b = new BaseMessage(in, Options.getInstance().getInt(
 							"protocol.maxMessageLength"));
 				} catch (SocketTimeoutException e) {
-					sendMessages();
-					continue;
-				} catch (ParsingException e) { // TODO REMOVE!!!
-					e.printStackTrace();
+					sendMessages(out);
 					continue;
 				}
 
@@ -260,6 +305,10 @@ public class Connection implements Runnable {
 						receiveInv((InvMessage) m, out);
 						break;
 
+					case GetdataMessage.COMMAND:
+						receiveGetdata((GetdataMessage) m, out);
+						break;
+
 					default:
 						if (m instanceof POWMessage) {
 							listener.receivedObject((POWMessage) m);
@@ -272,7 +321,7 @@ public class Connection implements Runnable {
 						}
 				}
 
-				sendMessages();
+				sendMessages(out);
 			}
 		} catch (IOException e) {
 			LOG.log(Level.INFO, "Connection to " + address.getHostAddress()
@@ -280,38 +329,122 @@ public class Connection implements Runnable {
 			close(s);
 			listener.connectionAborted(this);
 			return;
+		} catch (ParsingException e) {
+			LOG.log(Level.WARNING, "Parsing error", e);
+			close(s);
+			listener.connectionAborted(this);
+			return;
 		}
-		// TODO UNCOMMENT!!!
-		/*
-		 * catch (ParsingException e) { LOG.log(Level.WARNING, "Parsing error",
-		 * e); close(s); listener.connectionAborted(this); return; }
-		 */
+
+	}
+
+	private void receiveGetdata(GetdataMessage m, OutputStream out)
+			throws IOException {
+		List<POWMessage> objects = datastore
+				.getObjects(m.getInventoryVectors());
+
+		for (POWMessage object : objects) {
+			out.write(new BaseMessage(object).getBytes());
+		}
 	}
 
 	private void receiveInv(InvMessage m, OutputStream out) throws IOException {
-		List<InventoryVectorMessage> l = Datastore.getInstance()
-				.filterObjectsThatWeAlreadyHave(m.getInventoryVectors());
-
-		sendGetdata(l, out);
+		listener.advertisedObjects(m.getInventoryVectors());
 	}
 
-	private void sendGetdata(List<InventoryVectorMessage> l, OutputStream out)
-			throws IOException {
-		GetdataMessage m = new GetdataMessage(l);
+	private void sendGetdata(List<InventoryVectorMessage> toSend,
+			OutputStream out) throws IOException {
+		GetdataMessage m = new GetdataMessage(toSend);
 		BaseMessage b = new BaseMessage(m);
 		out.write(b.getBytes());
-		LOG.fine("Sent: getdata (" + l.size() + ")");
+		LOG.fine("Sent: getdata (" + toSend.size() + ")");
 	}
 
-	private void sendMessages() {
-		// TODO Auto-generated method stub
+	private void sendMessages(OutputStream out) throws IOException {
+		if (!(localVerified && remoteVerified)) {
+			return;
+		}
+
+		sendAddr(out);
+
+		synchronized (invBuffer) {
+			if (invBuffer.size() > 0) {
+				int messageSize = invBuffer.size();
+
+				if (messageSize > Options.getInstance().getInt(
+						"protocol.maxInvLength")) {
+					messageSize = Options.getInstance().getInt(
+							"protocol.maxInvLength");
+				}
+
+				ArrayList<InventoryVectorMessage> toSend = new ArrayList<>(
+						messageSize);
+				for (int i = 0; i < messageSize; i++) {
+					toSend.add(invBuffer.poll());
+				}
+
+				sendInv(toSend, out);
+			}
+		}
+
+		synchronized (nodeBuffer) {
+			if (nodeBuffer.size() > 0) {
+				int messageSize = nodeBuffer.size();
+
+				if (messageSize > Options.getInstance().getInt(
+						"protocol.maxAddrLength")) {
+					messageSize = Options.getInstance().getInt(
+							"protocol.maxAddrLength");
+				}
+
+				ArrayList<NetworkAddressMessage> toSend = new ArrayList<>(
+						messageSize);
+				for (int i = 0; i < messageSize; i++) {
+					toSend.add(nodeBuffer.poll());
+				}
+
+				sendAddr(toSend, out);
+			}
+		}
+
+		synchronized (requestBuffer) {
+			if (requestBuffer.size() > 0) {
+				int messageSize = requestBuffer.size();
+
+				if (messageSize > Options.getInstance().getInt(
+						"protocol.maxInvLength")) {
+					messageSize = Options.getInstance().getInt(
+							"protocol.maxInvLength");
+				}
+
+				ArrayList<InventoryVectorMessage> toSend = new ArrayList<>(
+						messageSize);
+				for (int i = 0; i < messageSize; i++) {
+					toSend.add(requestBuffer.poll());
+				}
+
+				sendGetdata(toSend, out);
+			}
+		}
+	}
+
+	private void sendAddr(ArrayList<NetworkAddressMessage> toSend,
+			OutputStream out) throws IOException {
+		out.write(new BaseMessage(new AddrMessage(toSend)).getBytes());
+
+		LOG.fine("Sent: addr (" + toSend.size() + ")");
+	}
+
+	private void sendInv(ArrayList<InventoryVectorMessage> toSend,
+			OutputStream out) throws IOException {
+		out.write(new BaseMessage(new InvMessage(toSend)).getBytes());
+
+		LOG.fine("Sent: inv (" + toSend.size() + ")");
 	}
 
 	private void receiveAddr(AddrMessage m, OutputStream out)
 			throws IOException {
 		listener.receivedNodes(m.getAddresses());
-
-		sendAddr(out);
 	}
 
 	private void sendAddr(OutputStream out) throws IOException {
@@ -321,8 +454,8 @@ public class Connection implements Runnable {
 			addrSent = true;
 		}
 
-		List<NetworkAddressMessage> addresses = Datastore.getInstance()
-				.getNodes(streams);
+		List<NetworkAddressMessage> addresses = datastore
+				.getNodes(remoteStreams);
 
 		while (!addresses.isEmpty()) {
 			List<NetworkAddressMessage> tmp = new ArrayList<>(1000);
@@ -335,7 +468,7 @@ public class Connection implements Runnable {
 			BaseMessage b = new BaseMessage(addr);
 			out.write(b.getBytes());
 
-			LOG.fine("Sent: addr");
+			LOG.fine("Sent: addr (" + tmp.size() + ")");
 		}
 	}
 
@@ -402,32 +535,45 @@ public class Connection implements Runnable {
 		}
 	}
 
-	public static void main(String[] args) throws UnknownHostException {
-		LoggingInitializer.initializeLogging();
-
-		Connection c = new Connection(InetAddress.getByName("127.0.0.1"), 8444,
-				1L, new ConnectionListener() {
-					@Override
-					public void receivedObject(POWMessage m) {
-						System.out.println("receivedObject()");
-					}
-
-					@Override
-					public void receivedNodes(
-							List<? extends NetworkAddressMessage> m) {
-						System.out.println("receivedNode()");
-					}
-
-					@Override
-					public void couldNotConnect(Connection c) {
-						System.out.println("couldNotConnect()");
-					}
-
-					@Override
-					public void connectionAborted(Connection c) {
-						System.out.println("connectionAborted()");
-					}
-				}, 541373894);
-
+	public InetAddress getAddress() {
+		return address;
 	}
+
+	public int getPort() {
+		return port;
+	}
+
+	// public static void main(String[] args) throws UnknownHostException {
+	// LoggingInitializer.initializeLogging();
+	//
+	// Connection c = new Connection(InetAddress.getByName("127.0.0.1"), 8444,
+	// 1L, new ConnectionListener() {
+	// @Override
+	// public void receivedObject(POWMessage m) {
+	// System.out.println("receivedObject()");
+	// }
+	//
+	// @Override
+	// public void receivedNodes(
+	// List<? extends NetworkAddressMessage> m) {
+	// System.out.println("receivedNodes()");
+	// }
+	//
+	// @Override
+	// public void couldNotConnect(Connection c) {
+	// System.out.println("couldNotConnect()");
+	// }
+	//
+	// @Override
+	// public void connectionAborted(Connection c) {
+	// System.out.println("connectionAborted()");
+	// }
+	//
+	// @Override
+	// public void advertisedObjects(
+	// List<InventoryVectorMessage> inventoryVectors) {
+	// System.out.println("advertisedObjects()");
+	// }
+	// }, 541373894);
+	// }
 }

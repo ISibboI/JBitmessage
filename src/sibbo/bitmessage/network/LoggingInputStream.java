@@ -8,6 +8,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.logging.Logger;
 
+/**
+ * For debugging.
+ * 
+ * @author Sebastian Schmidt
+ * @version 1.0
+ */
 public class LoggingInputStream extends InputStream {
 	private static final Logger LOG = Logger.getLogger(LoggingInputStream.class
 			.getName());

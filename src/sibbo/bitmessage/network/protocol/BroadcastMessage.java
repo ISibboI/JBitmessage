@@ -2,9 +2,13 @@ package sibbo.bitmessage.network.protocol;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import sibbo.bitmessage.crypt.CryptManager;
+import sibbo.bitmessage.crypt.Digest;
 
 /**
  * A broadcast message, basically an unencrypted message that can be read by
@@ -116,6 +120,8 @@ public class BroadcastMessage extends POWMessage {
 	@Override
 	protected void readPayload(InputBuffer b) throws IOException,
 			ParsingException {
+		InputBuffer signed = b.getSubBuffer(0);
+
 		VariableLengthIntegerMessage v = new VariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 
@@ -140,6 +146,12 @@ public class BroadcastMessage extends POWMessage {
 		ripe = b.get(128, 20);
 		b = b.getSubBuffer(148);
 
+		if (!Arrays.equals(
+				Digest.keyDigest(publicSigningKey, publicEncryptionKey), ripe)) {
+			throw new ParsingException(
+					"The hash of the public keys is incorrect.");
+		}
+
 		message = new MailMessage(b);
 		b = b.getSubBuffer(message.length());
 
@@ -152,6 +164,12 @@ public class BroadcastMessage extends POWMessage {
 		}
 
 		signature = b.get(0, (int) length);
+
+		if (!CryptManager.checkSignature(
+				signed.get(0, b.getOffset() - signed.getOffset()), signature,
+				publicSigningKey)) {
+			throw new ParsingException("Wrong signature.");
+		}
 	}
 
 	@Override
