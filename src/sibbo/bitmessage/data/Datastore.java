@@ -1,12 +1,16 @@
 package sibbo.bitmessage.data;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.logging.Logger;
 
+import sibbo.bitmessage.crypt.BMAddress;
 import sibbo.bitmessage.network.protocol.InventoryVectorMessage;
 import sibbo.bitmessage.network.protocol.NetworkAddressMessage;
+import sibbo.bitmessage.network.protocol.NodeServicesMessage;
 import sibbo.bitmessage.network.protocol.POWMessage;
 
 /**
@@ -72,5 +76,57 @@ public class Datastore {
 	public boolean put(POWMessage m) {
 		// TODO Auto-generated method stub
 		return false;
+	}
+
+	public Collection<BMAddress> getAddresses() {
+		return new ArrayList<>();
+	}
+
+	/**
+	 * Returns a list containing all nodes from the given list that are not
+	 * present in the datastore.
+	 * 
+	 * @param list The list of nodes to filter.
+	 * @return A list containing only nodes that are not present in the
+	 *         datastore.
+	 */
+	public List<NetworkAddressMessage> filterNodesThatWeAlreadyHave(
+			List<NetworkAddressMessage> list) {
+		return list;
+	}
+
+	/**
+	 * Stops the datastore as fast as possible.
+	 */
+	public void stop() {
+		// TODO Auto-generated method stub
+
+	}
+
+	/**
+	 * Adds all given nodes to the datastore, if they don't exist.
+	 * 
+	 * @param list The nodes to add.
+	 * @return A list containing all nodes that were added.
+	 */
+	public Collection<NetworkAddressMessage> putAll(
+			List<NetworkAddressMessage> list) {
+		return list;
+	}
+
+	/**
+	 * Returns a random node from the datastore.
+	 * 
+	 * @return A random node from the datastore.
+	 */
+	public NetworkAddressMessage getRandomNode() {
+		try {
+			return new NetworkAddressMessage(
+					(int) (System.currentTimeMillis() / 1000), 1,
+					new NodeServicesMessage(NodeServicesMessage.NODE_NETWORK),
+					InetAddress.getByName("localhost"), 8444);
+		} catch (UnknownHostException e) {
+			throw new RuntimeException(e);
+		}
 	}
 }

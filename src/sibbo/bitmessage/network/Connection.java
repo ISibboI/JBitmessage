@@ -259,6 +259,7 @@ public class Connection implements Runnable {
 			return;
 		}
 
+		// Send the version message if we are the one that connected.
 		if (client) {
 			try {
 				sendVersion(out);
@@ -311,7 +312,7 @@ public class Connection implements Runnable {
 
 					default:
 						if (m instanceof POWMessage) {
-							listener.receivedObject((POWMessage) m);
+							listener.receivedObject((POWMessage) m, this);
 						} else {
 							LOG.log(Level.WARNING,
 									"Unknown command: " + m.getCommand());
@@ -336,6 +337,8 @@ public class Connection implements Runnable {
 			return;
 		}
 
+		close(s);
+		listener.connectionAborted(this);
 	}
 
 	private void receiveGetdata(GetdataMessage m, OutputStream out)
@@ -349,7 +352,7 @@ public class Connection implements Runnable {
 	}
 
 	private void receiveInv(InvMessage m, OutputStream out) throws IOException {
-		listener.advertisedObjects(m.getInventoryVectors());
+		listener.advertisedObjects(m.getInventoryVectors(), this);
 	}
 
 	private void sendGetdata(List<InventoryVectorMessage> toSend,
@@ -444,7 +447,7 @@ public class Connection implements Runnable {
 
 	private void receiveAddr(AddrMessage m, OutputStream out)
 			throws IOException {
-		listener.receivedNodes(m.getAddresses());
+		listener.receivedNodes(m.getAddresses(), this);
 	}
 
 	private void sendAddr(OutputStream out) throws IOException {
@@ -541,6 +544,19 @@ public class Connection implements Runnable {
 
 	public int getPort() {
 		return port;
+	}
+
+	/**
+	 * Stops the connection as fast as possible.
+	 */
+	public void stop() {
+		stop = true;
+	}
+
+	public void advertiseObject(InventoryVectorMessage inventoryVector) {
+		synchronized (invBuffer) {
+			invBuffer.add(inventoryVector);
+		}
 	}
 
 	// public static void main(String[] args) throws UnknownHostException {
