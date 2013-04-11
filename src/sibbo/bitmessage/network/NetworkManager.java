@@ -128,14 +128,16 @@ public class NetworkManager implements ConnectionListener, Runnable {
 	public void receivedObject(POWMessage m, Connection c) {
 		alreadyRequested.remove(m.getInventoryVector());
 
-		if (datastore.put(m) && m.getCommand().equals(MsgMessage.COMMAND)) {
+		if (datastore.put(m)) {
 			for (Connection con : connections) {
 				if (con != c) {
 					con.advertiseObject(m.getInventoryVector());
 				}
 			}
 
-			objectParser.parse((MsgMessage) m);
+			if (m.getCommand().equals(MsgMessage.COMMAND)) {
+				objectParser.parse((MsgMessage) m);
+			}
 		}
 	}
 
@@ -172,7 +174,10 @@ public class NetworkManager implements ConnectionListener, Runnable {
 					|| (!activeMode && connections.size() < Options
 							.getInstance().getInt(
 									"network.passiveMode.maxConnections"))) {
-				NetworkAddressMessage m = datastore.getRandomNode();
+				NetworkAddressMessage m = datastore.getRandomNode(); // TODO Add
+																		// multi
+																		// stream
+																		// management
 				Connection c = new Connection(m.getIp(), m.getPort(),
 						m.getStream(), this, nonce);
 				connections.add(c);

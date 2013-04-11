@@ -2,6 +2,9 @@ package sibbo.bitmessage.data;
 
 import java.util.logging.Logger;
 
+import sibbo.bitmessage.network.protocol.InventoryVectorMessage;
+import sibbo.bitmessage.network.protocol.POWMessage;
+
 /**
  * Class that manages a connection to a database. It creates several prepared
  * statements to make operations fast and secure.
@@ -24,4 +27,17 @@ public class Database {
 
 	private static final Logger LOG = Logger
 			.getLogger(Database.class.getName());
+
+	/**
+	 * Reads the object with the given hash from the database.
+	 * 
+	 * @param m The hash.
+	 * @return The object with the given hash or null, if there is no object
+	 *         with the given hash.
+	 */
+	public POWMessage getObject(InventoryVectorMessage m) {
+		return null;
+		// TODO Auto-generated method stub
+
+	}
 }

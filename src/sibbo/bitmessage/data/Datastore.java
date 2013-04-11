@@ -1,12 +1,17 @@
 package sibbo.bitmessage.data;
 
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
+import sibbo.bitmessage.Options;
 import sibbo.bitmessage.crypt.BMAddress;
 import sibbo.bitmessage.network.protocol.InventoryVectorMessage;
 import sibbo.bitmessage.network.protocol.NetworkAddressMessage;
@@ -26,6 +31,23 @@ public class Datastore {
 	/** The database. */
 	private Database database;
 
+	/** Stores the hashes of all objects that we have. */
+	private Set<InventoryVectorMessage> localObjects = Collections
+			.synchronizedSet(new HashSet<InventoryVectorMessage>());
+
+	/** Caches objects to reduce disc activity. */
+	private Map<InventoryVectorMessage, POWMessage> objectCache = new Hashtable<>();
+
+	/** Stores all nodes that we know. */
+	private Map<Long, Map<NetworkAddressMessage, NetworkAddressMessage>> knownNodes = new Hashtable<>();
+
+	/** Stores all addresses we own. */
+	private Set<BMAddress> ownedAddresses = Collections
+			.synchronizedSet(new HashSet<BMAddress>());
+
+	/** If true, the datastore stops as fast as possible. */
+	private volatile boolean stop;
+
 	/**
 	 * Creates a new datastore with the given name.
 	 * 
@@ -42,7 +64,26 @@ public class Datastore {
 	 * @return A list with all nodes that belong to one of the given streams.
 	 */
 	public List<NetworkAddressMessage> getNodes(long[] streams) {
-		return new ArrayList<>();
+		List<Map<NetworkAddressMessage, NetworkAddressMessage>> nodeLists = new ArrayList<>();
+		int size = 0;
+
+		for (long stream : streams) {
+			Map<NetworkAddressMessage, NetworkAddressMessage> s = knownNodes
+					.get(stream);
+
+			if (s != null) {
+				nodeLists.add(s);
+				size += s.size();
+			}
+		}
+
+		List<NetworkAddressMessage> l = new ArrayList<>(size);
+
+		for (Map<NetworkAddressMessage, NetworkAddressMessage> s : nodeLists) {
+			l.addAll(s.values());
+		}
+
+		return l;
 	}
 
 	/**
@@ -55,16 +96,60 @@ public class Datastore {
 	 */
 	public List<InventoryVectorMessage> filterObjectsThatWeAlreadyHave(
 			List<InventoryVectorMessage> inventoryVectors) {
-		return new ArrayList<>(inventoryVectors);
+		List<InventoryVectorMessage> l = new ArrayList<>(inventoryVectors);
+
+		l.removeAll(localObjects);
+
+		return l;
 	}
 
+	/**
+	 * Returns the POWMessages that belong to the given InventoryVectors
+	 * (hashes).
+	 * 
+	 * @param inventoryVectors The hashes.
+	 * @return The objects that belong to the given hashes.
+	 */
 	public List<POWMessage> getObjects(
 			List<InventoryVectorMessage> inventoryVectors) {
-		return new ArrayList<>();
+		List<POWMessage> objects = new ArrayList<>(inventoryVectors.size());
+
+		for (InventoryVectorMessage m : inventoryVectors) {
+			POWMessage p = objectCache.get(m);
+
+			if (p != null) {
+				objects.add(p);
+			} else {
+				p = database.getObject(m);
+
+				if (p != null) {
+					objects.add(p);
+				}
+			}
+		}
+
+		return objects;
 	}
 
+	/**
+	 * Removes the node with the given ip and port if its older than the
+	 * threshold (Can be set via Options).
+	 * 
+	 * @param address The address of the node.
+	 * @param port The port of the node.
+	 */
 	public void removeNodeIfOld(InetAddress address, int port) {
-		// TODO Auto-generated method stub
+		for (Map<NetworkAddressMessage, NetworkAddressMessage> s : knownNodes
+				.values()) {
+			NetworkAddressMessage m = s.get(new NetworkAddressMessage(1, 1,
+					new NodeServicesMessage(NodeServicesMessage.NODE_NETWORK),
+					address, port));
+
+			if (m.getTime() < (System.currentTimeMillis() / 1000)
+					- Options.getInstance().getInt("data.maxNodeStorageTime")) {
+				s.remove(m);
+			}
+		}
 	}
 
 	/**
@@ -74,12 +159,23 @@ public class Datastore {
 	 * @return True if the object was added, false if it already exists.
 	 */
 	public boolean put(POWMessage m) {
-		// TODO Auto-generated method stub
-		return false;
+		InventoryVectorMessage i = m.getInventoryVector();
+
+		if (localObjects.contains(i)) {
+			objectCache.put(i, m);
+			return true;
+		} else {
+			return false;
+		}
 	}
 
+	/**
+	 * Returns all addresses that we own.
+	 * 
+	 * @return All addresses that we own.
+	 */
 	public Collection<BMAddress> getAddresses() {
-		return new ArrayList<>();
+		return new ArrayList<>(ownedAddresses);
 	}
 
 	/**
@@ -92,15 +188,21 @@ public class Datastore {
 	 */
 	public List<NetworkAddressMessage> filterNodesThatWeAlreadyHave(
 			List<NetworkAddressMessage> list) {
-		return list;
+		List<NetworkAddressMessage> l = new ArrayList<>(list);
+
+		for (Map<NetworkAddressMessage, NetworkAddressMessage> m : knownNodes
+				.values()) {
+			l.removeAll(m.values());
+		}
+
+		return l;
 	}
 
 	/**
 	 * Stops the datastore as fast as possible.
 	 */
 	public void stop() {
-		// TODO Auto-generated method stub
-
+		stop = true;
 	}
 
 	/**
@@ -111,7 +213,18 @@ public class Datastore {
 	 */
 	public Collection<NetworkAddressMessage> putAll(
 			List<NetworkAddressMessage> list) {
-		return list;
+		List<NetworkAddressMessage> added = new ArrayList<>(list.size());
+
+		for (NetworkAddressMessage m : list) {
+			NetworkAddressMessage before = knownNodes.get(m.getStream()).put(m,
+					m);
+
+			if (before == null) {
+				added.add(m);
+			}
+		}
+
+		return added;
 	}
 
 	/**
@@ -119,14 +232,10 @@ public class Datastore {
 	 * 
 	 * @return A random node from the datastore.
 	 */
-	public NetworkAddressMessage getRandomNode() {
-		try {
-			return new NetworkAddressMessage(
-					(int) (System.currentTimeMillis() / 1000), 1,
-					new NodeServicesMessage(NodeServicesMessage.NODE_NETWORK),
-					InetAddress.getByName("localhost"), 8444);
-		} catch (UnknownHostException e) {
-			throw new RuntimeException(e);
-		}
+	public NetworkAddressMessage getRandomNode(long stream) {
+		List<NetworkAddressMessage> nodes = new ArrayList<>(knownNodes.get(
+				stream).keySet());
+
+		return nodes.get((int) (Math.random() * nodes.size()));
 	}
 }
