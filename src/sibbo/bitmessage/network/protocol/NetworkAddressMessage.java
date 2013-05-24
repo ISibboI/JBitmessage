@@ -194,4 +194,32 @@ public class NetworkAddressMessage extends Message {
 	public int length() {
 		return 34;
 	}
+
+	/**
+	 * Returns the hash for this object, calculated only from the ip and port.
+	 */
+	@Override
+	public int hashCode() {
+		if (ip.getAddress().length == 4) {
+			return Util.getInt(ip.getAddress()) + port;
+		} else {
+			return Util.getInt(Arrays.copyOfRange(ip.getAddress(), 12, 16))
+					+ port;
+		}
+	}
+
+	/**
+	 * Returns true if the given object is a NetworkAddressMessage and
+	 * represents the same ip and port as this message.
+	 */
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof NetworkAddressMessage) {
+			NetworkAddressMessage m = (NetworkAddressMessage) o;
+
+			return m.ip.equals(ip) && port == m.port;
+		} else {
+			return false;
+		}
+	}
 }

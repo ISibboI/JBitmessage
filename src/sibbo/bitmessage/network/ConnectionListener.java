@@ -34,19 +34,20 @@ public interface ConnectionListener {
 	 * 
 	 * @param m An object.
 	 */
-	void receivedObject(POWMessage m);
+	void receivedObject(POWMessage m, Connection c);
 
 	/**
 	 * The connection received a list of new nodes.
 	 * 
 	 * @param list A list of nodes.
 	 */
-	void receivedNodes(List<? extends NetworkAddressMessage> list);
+	void receivedNodes(List<NetworkAddressMessage> list, Connection c);
 
 	/**
 	 * The connection received a list of object hashes.
 	 * 
 	 * @param inventoryVectors A list of object hashes.
 	 */
-	void advertisedObjects(List<InventoryVectorMessage> inventoryVectors);
+	void advertisedObjects(List<InventoryVectorMessage> inventoryVectors,
+			Connection c);
 }

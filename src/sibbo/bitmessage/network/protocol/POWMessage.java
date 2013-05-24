@@ -128,4 +128,13 @@ public abstract class POWMessage extends P2PMessage {
 	public byte[] getHash() {
 		return Digest.sha512(Digest.sha512(getBytes()), 32);
 	}
+
+	/**
+	 * Returns the inventory vector describing this message.
+	 * 
+	 * @return The inventory vector describing this message.
+	 */
+	public InventoryVectorMessage getInventoryVector() {
+		return new InventoryVectorMessage(getHash());
+	}
 }

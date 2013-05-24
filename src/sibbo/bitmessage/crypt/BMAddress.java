@@ -1,7 +1,10 @@
 package sibbo.bitmessage.crypt;
 
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.logging.Logger;
+
+import sibbo.bitmessage.network.protocol.Util;
 
 /**
  * A bitmessage address.
@@ -120,5 +123,22 @@ public class BMAddress {
 	 */
 	public static boolean isSupported(long addressVersion) {
 		return addressVersion == 2;
+	}
+
+	@Override
+	public int hashCode() {
+		return Util.getInt(ripe);
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof BMAddress) {
+			BMAddress b = (BMAddress) o;
+
+			return Arrays.equals(publicEncryptionKey, b.publicEncryptionKey)
+					&& Arrays.equals(publicSigningKey, b.publicSigningKey);
+		} else {
+			return false;
+		}
 	}
 }

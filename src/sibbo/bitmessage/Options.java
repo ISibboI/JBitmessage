@@ -31,6 +31,7 @@ public class Options extends Properties {
 				"network.userAgent",
 				"/" + defaults.getString("global.name") + ":"
 						+ defaults.getString("global.version") + "/");
+		defaults.setProperty("data.maxNodeStorageTime", 3600 * 3); // Seconds
 	}
 
 	private static final Options instance = new Options(defaults);
