@@ -75,7 +75,7 @@ public class ObjectParser implements Runnable {
 				BMAddress addr = null;
 
 				for (BMAddress a : addresses) {
-					kd = CryptManager.tryDecryption(m.getEncrypted(),
+					kd = CryptManager.getInstance().tryDecryption(m.getEncrypted(),
 							a.getPrivateEncryptionKey());
 
 					if (kd != null) {

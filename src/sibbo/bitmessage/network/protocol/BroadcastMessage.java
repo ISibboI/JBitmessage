@@ -165,7 +165,7 @@ public class BroadcastMessage extends POWMessage {
 
 		signature = b.get(0, (int) length);
 
-		if (!CryptManager.checkSignature(
+		if (!CryptManager.getInstance().checkSignature(
 				signed.get(0, b.getOffset() - signed.getOffset()), signature,
 				publicSigningKey)) {
 			throw new ParsingException("Wrong signature.");

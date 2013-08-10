@@ -174,7 +174,7 @@ public class NetworkManager implements ConnectionListener, Runnable {
 					|| (!activeMode && connections.size() < Options
 							.getInstance().getInt(
 									"network.passiveMode.maxConnections"))) {
-				NetworkAddressMessage m = datastore.getRandomNode(); // TODO Add
+				NetworkAddressMessage m = datastore.getRandomNode(1); // TODO Add
 																		// multi
 																		// stream
 																		// management

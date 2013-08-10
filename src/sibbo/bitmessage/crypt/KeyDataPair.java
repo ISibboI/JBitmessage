@@ -1,5 +1,6 @@
 package sibbo.bitmessage.crypt;
 
+import java.security.KeyPair;
 import java.util.Objects;
 import java.util.logging.Logger;
 
@@ -14,7 +15,7 @@ public class KeyDataPair {
 			.getName());
 
 	/** The key. */
-	private byte[] key;
+	private KeyPair key;
 
 	/** The data. */
 	private byte[] data;
@@ -25,7 +26,7 @@ public class KeyDataPair {
 	 * @param key The key.
 	 * @param data The data.
 	 */
-	public KeyDataPair(byte[] key, byte[] data) {
+	public KeyDataPair(KeyPair key, byte[] data) {
 		Objects.requireNonNull(key, "key must not be null.");
 		Objects.requireNonNull(data, "data must not be null.");
 
@@ -33,7 +34,7 @@ public class KeyDataPair {
 		this.data = data;
 	}
 
-	public byte[] getKey() {
+	public KeyPair getKey() {
 		return key;
 	}
 

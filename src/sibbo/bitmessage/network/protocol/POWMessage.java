@@ -43,7 +43,7 @@ public abstract class POWMessage extends P2PMessage {
 		nonce = b.get(0, 8);
 		time = Util.getInt(b.get(8, 4));
 
-		if (!CryptManager.checkPOW(b.get(8, b.length() - 8), nonce)) {
+		if (!CryptManager.getInstance().checkPOW(b.get(8, b.length() - 8), nonce)) {
 			throw new ParsingException("POW insufficient!");
 		}
 
@@ -105,7 +105,7 @@ public abstract class POWMessage extends P2PMessage {
 			b[i + 4] = payloadBytes[i];
 		}
 
-		nonce = CryptManager.doPOW(b);
+		nonce = CryptManager.getInstance().doPOW(b);
 	}
 
 	/**
