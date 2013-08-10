@@ -1,0 +1,110 @@
+<body>
+This package holds the provider class for the elliptic curve algorithms
+<b>ECDSA</b>, <b>ECNR</b>, <b>ECDH</b> and <b>ECIES</b>. ECDSA and ECNR
+are public key signature algorithms, ECDH a public key exchange protocol
+and ECIES is a cipher.
+<br>We will give a short introduction to how to install a JCA-based provider
+and then explain some of the mathematical background of elliptic curves.
+<h3>
+How to install the FlexiECProvider</h3>
+There are two parts to installing a provider: installing the provider package
+classes, and configuring the provider.
+<h5>
+Installing the Provider Classes</h5>
+There are a couple possible ways of installing the provider classes:
+<ol>
+<li>
+Place a zip or JAR file containing the classes anywhere on your CLASSPATH.</li>
+
+<li>
+Supply your provider JAR file as an "installed" or "bundled" extension.</li>
+</ol>
+
+<h5>
+&nbsp;Configuring the Provider</h5>
+The next step is to add the provider to your list of approved providers.
+This is done statically by editing the <tt>java.security</tt> file in the
+l<tt>ib/security</tt> directory of the JDK. Thus, if the JDK is installed
+in a directory called jdk1.2, the file would be <tt>jdk1.2/lib/security/java.security</tt>.
+One of the types of properties you can set in java.security is of the following
+form:
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <tt>security.provider.n=masterClassName</tt></pre>
+This declares a provider, and specifies its preference order n. The preference
+order is the order in which providers are searched for requested algorithms
+(when no specific provider is requested). The order is 1-based; 1 is the
+most preferred, followed by 2, and so on.
+<br><tt>masterClassName</tt> must specify the provider's "master" class.
+The provider's documentation will specify its master class. This class
+is always a subclass of the Provider class. The subclass constructor sets
+the values of various properties that are required for the Java Cryptography
+API to look up the algorithms or other facilities implemented by the provider.
+<p>Suppose that the master class is <tt>de.flexiprovider.ec.FlexiECProvider</tt>,
+and that you would like to configure <tt>FlexiECProvider</tt> as your second
+preferred provider. To do so, add the following line to the <tt>java.security</tt>
+file:
+<pre><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; security.provider.2=de.flexiprovider.ec.FlexiECProvider</tt></pre>
+Providers may also be registered dynamically. To do so, call either the
+addProvider or insertProviderAt method in the Security class. This type
+of registration is not persistent and can only be done by "trusted" programs.
+<br>&nbsp;
+<h3>
+Mathematical Background</h3>
+To understand Elliptic Curve Cryptography (ECC) one must be familiar at
+least with the terms <i>group</i>, <i>finite field</i> and
+<i>group</i>
+or <i>element order</i>. We will give a short introduction to ECC.
+<p>Let <b><i>F<sub>q</sub></i></b> be a finite field with <i>q</i> elements.
+The cubic equation (Weierstra&szlig;gleichung)
+<center>
+<p><i>E: y<sup>2</sup>z + a<sub>1</sub> xyz + a<sub>3</sub> yz<sub>2</sub>
+= x<sup>3</sup>+a<sub>2</sub> x<sup>2</sup>z + a<sub>4</sub> xz<sup>2</sup>
++ a<sub>6</sub>z<sup>3</sup></i></center>
+defined over <b><i>F<sub>q</sub></i></b> is called an elliptic curve, if
+it is smooth, that means, if for all points (x : y : z) of the equation
+<center>
+<p><i>F(x, y, z) = y<sup>2</sup>z + a<sub>1</sub> xyz + a<sub>3</sub> yz<sub>2</sub>
+- x<sup>3</sup> - a<sub>2</sub> x<sup>2</sup>z - a<sub>4</sub> xz<sup>2</sup>
+- a<sub>6</sub>z<sup>3</sup></i></center>
+at least one of the three formal three partial differentials
+<i>dF/dx</i>,
+<i>dF/dy</i> and <i>dF/dz</i> is not zero.
+<p>The finite fields mostly used in ECC are the <i>prime fieldsF<sub>p</sub></i>,
+<i>p</i> prime, and the finite fields of characteristic 2, <i>F<sub>2<sup>m</sup></sub></i>.
+With these fields our Weierstra&szlig;gleichung gets a little bit simpler:
+<center>
+<p><i>E: y<sup>2</sup>z = x<sup>3</sup> + axz<sup>2</sup> + bz<sup>3</sup></i></center>
+for <i>x, y, z, a, b in F<sub>p</sub></i> and
+<center>
+<p><i>E: y<sup>2</sup>z + yz<sup>2</sup> = x<sup>3</sup> + ax<sup>2</sup>z
++ bz<sup>3</sup></i></center>
+for <i>x, y, z, a, b in F<sub>2<sup>m</sup></sub></i>. Further on we will
+relate only to affine coordinates.
+<p>The addition of 2 points <i>R = P + Q</i> is defined as follows:
+<br>Connect the points <i>P</i> and <i>Q</i> by a line <i>l</i>. Then mirror
+the 3. intersection of <i>l</i> with <i>E</i> at the x-axis. The resulting
+intersection-point is <i>R</i>.
+<br>There are two special cases:
+<ol>&nbsp;
+<li>
+<i>P = Q</i>: When <i>P = Q</i>, the line <i>l</i> is the tangent of <i>E</i>
+at the point <i>P</i>.</li>
+
+<li>
+<i>P /= Q</i>, <i>x<sub>P</sub> = x<sub>Q</sub>, y<sub>P</sub> /= y<sub>Q</sub></i>:
+The line <i>l</i> will be a perpendicular through
+<i>P</i> and <i>Q</i>.
+Then <i>l</i> will not intersect curve <i>E</i> again. In this case we
+call the resulting point <i>point at infinity</i>.</li>
+</ol>
+With this point addition the points on <i>E</i> together with the point
+at infinity form an abelian group. Let <i>R = n*P</i>, where
+<i>n*P</i>
+means to add <i>P n</i>-times on itself. Then <b><i>n </i>is the discrete
+logarithm of <i>R </i>to the base <i>P</i></b>. Given
+<i>R</i> and <i>P</i>
+it is very hard to compute <i>n</i>.
+<br>The problem of computing <i>n</i> given <i>R</i> and <i>P</i> is called
+the <i>discrete logarithm problem (ECDLP)</i>. The security of elliptic
+curve algorithms are all based on the ECDLP.
+</body>
+

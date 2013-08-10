@@ -1,0 +1,183 @@
+<BODY>
+<CENTER><H2>FlexiCoreProvider</H2></CENTER>
+The FlexiCoreProvider provides several cryptographic algorithms.
+<p>
+Provided Algorithms:
+<TABLE BORDER="1" CELLPADDING="3" CELLSPACING="1" >
+<TR>
+<TD WIDTH="30%"><B>Symmetric Block Cipher</B></TD>
+<TD>Modes</TD>
+<TD>Paddingschemes</TD>
+<TD>Complies to</TD>
+</TR>
+<TR>
+<TD WIDTH="30%">DESede</TD>
+<TD>ECB, CBC, CFB, OFB</TD>
+<TD>OneAndZeroes, PKCS#7</TD>
+<TD><a href="http://csrc.nist.gov/cryptval/des/fr990115.htm">FIPS 46-3</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">Camellia</TD>
+<TD>ECB, CBC, CFB, OFB</TD>
+<TD>OneAndZeroes, PKCS#7</TD>
+<TD><a href="http://info.isl.ntt.co.jp/camellia/">Camellia</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">IDEA</TD>
+<TD>ECB, CBC, CFB, OFB</TD>
+<TD>OneAndZeroes, PKCS#7</TD>
+<TD><a href="http://www.mediacrypt.com/engl/Content/ideaTM_algorithm.htm">IDEA</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">MARS</TD>
+<TD>ECB, CBC, CFB, OFB</TD>
+<TD>OneAndZeroes, PKCS#7</TD>
+<TD><a href="http://www.research.ibm.com/security/mars.html">MARS</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">RC5</TD>
+<TD>ECB, CBC, CFB, OFB</TD>
+<TD>OneAndZeroes, PKCS#7</TD>
+<TD><a href="ftp://ftp.nordu.net/rfc/rfc2040.txt">RC5</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">RC6</TD>
+<TD>ECB, CBC, CFB, OFB</TD>
+<TD>OneAndZeroes, PKCS#7</TD>
+<TD><a href="http://www.rsasecurity.com/rsalabs/rc6/">RC6</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">Rijndael</TD>
+<TD>ECB, CBC, CFB, OFB</TD>
+<TD>OneAndZeroes, PKCS#7</TD>
+<TD><a href="http://www.esat.kuleuven.ac.be/%7Erijmen/rijndael">Rijndael</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">SAFER+</TD>
+<TD>ECB, CBC, CFB, OFB</TD>
+<TD>OneAndZeroes, PKCS#7</TD>
+<TD>--</TD>
+</TR>
+<TR>
+<TD WIDTH="30%">SAFER++</TD>
+<TD>ECB, CBC, CFB, OFB</TD>
+<TD>OneAndZeroes, PKCS#7</TD>
+<TD>--</TD>
+</TR>
+<TR>
+<TD WIDTH="30%">Serpent</TD>
+<TD>ECB, CBC, CFB, OFB</TD>
+<TD>OneAndZeroes, PKCS#7</TD>
+<TD><a href="http://www.cl.cam.ac.uk/~rja14/serpent.html">Serpent</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">Twofish</TD>
+<TD>ECB, CBC, CFB, OFB</TD>
+<TD>OneAndZeroes, PKCS#7</TD>
+<TD><a href="http://www.counterpane.com/twofish.html">Twofish</a></TD>
+</TR>
+</TABLE>
+
+<p>
+<TABLE BORDER="1" CELLPADDING="3" CELLSPACING="1" >
+<TR>
+<TD WIDTH="30%"><B>Asymmetric Block Cipher</B></TD>
+<TD>Padding schemes</TD>
+<TD>Complies to</TD>
+</TR>
+<TR>
+<TD WIDTH="30%">RSA-PKCS#1-v1.5</TD>
+<TD>PKCS#1-v1.5</TD>
+<TD><a href="http://www.rsasecurity.com/rsalabs/pkcs/pkcs-1/index.html">PKCS#1 version 2.1</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">RSA-OAEP</TD>
+<TD>RSA-OAEP</TD>
+<TD><a href="http://www.rsasecurity.com/rsalabs/pkcs/pkcs-1/index.html">PKCS#1 version 2.1</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">ElGamal</TD>
+<TD>OneAndZeroes, PKCS#7</TD>
+<TD>--</TD>
+</TR>
+</TABLE>
+* CBC mode is not defined in the PKCS#1 standard.
+
+<p>
+<TABLE BORDER="1" CELLPADDING="3" CELLSPACING="1" >
+<TR>
+<TD WIDTH="30%"><B>Signatures</B></TD>
+<TD>Complies to</TD>
+</TR>
+
+<TR>
+<TD WIDTH="30%">DSA</TD>
+<TD><a href="http://csrc.nist.gov/fips/fips186-2.pdf">FIPS 186-2</a></TD>
+</TR>
+
+<TR>
+<TD WIDTH="30%">RSA-PKCS#1-v1.5</TD>
+<TD><a href="http://www.rsasecurity.com/rsalabs/pkcs/pkcs-1/index.html">PKCS#1 version 2.1</a></TD>
+</TR>
+
+<TR>
+<TD WIDTH="30%">RSA-PSS</TD>
+<TD><a href="http://www.rsasecurity.com/rsalabs/pkcs/pkcs-1/index.html">PKCS#1 version 2.1</a></TD>
+</TR>
+</TABLE>
+<p>
+
+<TABLE BORDER="1" CELLPADDING="3" CELLSPACING="1" >
+<TR>
+<TD WIDTH="30%"><B>Message Digest</B></TD>
+<TD>Complies to</TD>
+</TR>
+<TR>
+<TD WIDTH="30%">MD4</TD>
+<TD><a href="http://www.ietf.org/rfc/rfc1320.txt">RFC 1320</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">MD5</TD>
+<TD><a href="http://www.ietf.org/rfc/rfc1321.txt">RFC 1321</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">RIPEMD 128</TD>
+<TD>--</TD>
+</TR>
+<TR>
+<TD WIDTH="30%">RIPEMD 160</TD>
+<TD><a href="http://esat.kuleuven.ac.be/~boesselae/ripemd160.html">RIPEMD 160</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">SHA-1</TD>
+<TD><a href="http://csrc.ncsl.nist.gov/fips/fip180-1.ps">FIPS 180-1</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">SHA-256/384/512</TD>
+<TD><a href="http://csrc.nist.gov/encryption/shs/sha256-384-512.pdf">FIPS 180-1</a></TD>
+</TR>
+</TABLE>
+<p>
+
+<TABLE BORDER="1" CELLPADDING="3" CELLSPACING="1" >
+<TR>
+<TD WIDTH="30%"><B>Passphrase based encryption</B></TD>
+<TD>Hashalgorithm</TD>
+<TD>Cipher</TD>
+<TD>Complies to</TD>
+</TR>
+<TR>
+<TD WIDTH="30%">PBEwithSHA1andDES-CBC</TD>
+<TD>SHA-1</TD>
+<TD>DES</TD>
+<TD><a href="http://www.rsasecurity.com/rsalabs/pkcs/pkcs-5/index.html">PKCS#5 version 2.0</a></TD>
+</TR>
+<TR>
+<TD WIDTH="30%">PBEwithMD5andDES-CBC</TD>
+<TD>MD5</TD>
+<TD>DES</TD>
+<TD><a href="http://www.rsasecurity.com/rsalabs/pkcs/pkcs-5/index.html">PKCS#5 version 2.0</a></TD>
+</TR>
+</TABLE>
+<p>
+</BODY>

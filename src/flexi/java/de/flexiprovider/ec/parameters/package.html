@@ -1,0 +1,24 @@
+<body>
+Provides the classes and interface to <i>EC domain parameters</i>.
+They are used by all algorithms of the <a href =../package.html>ec
+package</a>. EC domain parameters include following items:
+<dl>
+<dt>
+<b>EC domain parameters</b>
+
+<dd><ul compact>
+<li><b>q</B>: the size of the underlying field<br> either a prime
+<i>p</i> or 2<sup>m</sup>, m integer</li>
+<li><b>a</b>: first parameter of the underlying elliptic curve</li>
+<li><b>b</b>: second parameter of the underlying elliptic curve</li>
+<li><b>G</b>: point of the elliptic curve with order <b>r</b>
+<li><b>r</b>: order of point <b>G</b> and primefactor of #E, i.e.
+r | #E
+<li><b>k</b>: cofactor, i.e. k*r = #E
+</ul></dt>
+</dl>
+The class <a href=CurveParams.html>CurveParams</a> provides a (transparent)
+implementation of EC domain parameters. The class
+<a href=ECParameters.html>ECParameters</a> is used to encode and decode
+the parameters. 
+</body>

@@ -6,6 +6,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.Security;
 import java.security.spec.ECGenParameterSpec;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -29,6 +30,7 @@ public final class CryptManager {
 	 * Singleton.
 	 */
 	private CryptManager() {
+		Security.addProvider(new de.flexiprovider.core.FlexiCoreProvider());
 	}
 
 	public static CryptManager getInstance() {

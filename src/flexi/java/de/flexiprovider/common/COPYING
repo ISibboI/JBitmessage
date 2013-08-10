@@ -1,0 +1,48 @@
+    ________             _  ____                   _      __          
+   / ____/ /___   _  __ (_)/ __ \_________  _   __(_)____/ /___  _____
+  / /_  / // _ \ | |/_// // /_/ / ___/ __ \| | / / // __  // _ \/ ___/
+ / __/ / //  __/_>  < / // ____/ /  / /_/ /| |/ / // /_/ //  __/ /    
+/_/   /_/ \___//_/|_|/_//_/   /_/   \____/ |___/_/ \__,_/ \___/_/     
+
+
+FlexiProvider/common
+--------------------
+
+Copyright (c) 1998-2003	by The FlexiProvider Group
+
+postal address:
+
+FlexiProvider Group
+Technische Universitaet Darmstadt
+Fachbereich Informatik
+Fachgebiet Kryptographie, Computeralgebra
+Alexanderstr. 10
+D-64283 Darmstadt 
+
+email contact: krprvadm@cdc.informatik.tu-darmstadt.de
+
+PLEASE NOTE:
+This library can be licensed under either the GNU Lesser General
+Public License (LGPL) *OR* alternatively under an individual
+license for usage in commercial projects.
+Please see below and for conditions and terms of usage under the
+GNU Lesser Public License (also read the file LGPL.txt in this
+directory for the actual license).
+Otherwise please contact us at the above address for alternative
+commercial licensing and its pricing.
+
+--
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
