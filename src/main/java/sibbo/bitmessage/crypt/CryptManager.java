@@ -14,6 +14,9 @@ import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
 
 import sibbo.bitmessage.Options;
+import sibbo.bitmessage.crypt.Digest;
+import sibbo.bitmessage.crypt.KeyDataPair;
+import sibbo.bitmessage.crypt.POWCalculator;
 import sibbo.bitmessage.network.protocol.Util;
 
 public final class CryptManager {

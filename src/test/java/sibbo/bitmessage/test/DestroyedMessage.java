@@ -12,18 +12,15 @@ import java.util.logging.Logger;
 
 import sibbo.bitmessage.network.protocol.Util;
 
-import com.sun.org.apache.xml.internal.security.exceptions.Base64DecodingException;
-import com.sun.org.apache.xml.internal.security.utils.Base64;
+import sun.misc.BASE64Decoder;
 
 public class DestroyedMessage {
 	private static final Logger LOG = Logger.getLogger(DestroyedMessage.class
 			.getName());
 
-	public static void main(String[] args) throws IOException,
-			Base64DecodingException {
-		byte[] b = Base64.decode(Files.newBufferedReader(FileSystems
-				.getDefault().getPath("base64", new String[] {}), Charset
-				.forName("UTF-8")));
+	public static void main(String[] args) throws IOException {
+		byte[] b = new BASE64Decoder().decodeBuffer(Files.newInputStream(FileSystems
+				.getDefault().getPath("base64", new String[] {})));
 
 		System.out.println(Arrays.toString(Arrays.copyOfRange(b,
 				b.length - 200, b.length)));
