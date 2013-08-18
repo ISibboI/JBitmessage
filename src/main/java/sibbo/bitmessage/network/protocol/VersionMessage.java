@@ -12,14 +12,13 @@ import java.util.logging.Logger;
  * @version 1.0
  */
 public class VersionMessage extends P2PMessage {
-	private static final Logger LOG = Logger.getLogger(VersionMessage.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(VersionMessage.class.getName());
 
 	/** The command string for this message type. */
 	public static final String COMMAND = "version";
 
 	/** The protocol version is 1. */
-	public static final int PROTOCOL_VERSION = 1;
+	public static final int PROTOCOL_VERSION = 2;
 
 	/** The services enabled by this node. */
 	private NodeServicesMessage services;
@@ -48,18 +47,23 @@ public class VersionMessage extends P2PMessage {
 	/**
 	 * Creates a new version message with the given parameters.
 	 * 
-	 * @param services The services enabled by the sender.
-	 * @param timestamp Standard Unix timestamp in seconds.
-	 * @param receiver The address of the receiver.
-	 * @param sender The address of the sender.
-	 * @param nonce Random nonce used to detect connections to self.
-	 * @param userAgent The User Agent of the sender.
-	 * @param streams The streams the sender is interested in.
+	 * @param services
+	 *            The services enabled by the sender.
+	 * @param timestamp
+	 *            Standard Unix timestamp in seconds.
+	 * @param receiver
+	 *            The address of the receiver.
+	 * @param sender
+	 *            The address of the sender.
+	 * @param nonce
+	 *            Random nonce used to detect connections to self.
+	 * @param userAgent
+	 *            The User Agent of the sender.
+	 * @param streams
+	 *            The streams the sender is interested in.
 	 */
-	public VersionMessage(NodeServicesMessage services, long timestamp,
-			SimpleNetworkAddressMessage receiver,
-			SimpleNetworkAddressMessage sender, long nonce, String userAgent,
-			long[] streams) {
+	public VersionMessage(NodeServicesMessage services, long timestamp, SimpleNetworkAddressMessage receiver,
+			SimpleNetworkAddressMessage sender, long nonce, String userAgent, long[] streams) {
 		this.services = services;
 		this.timestamp = timestamp;
 		this.receiver = receiver;
@@ -110,8 +114,7 @@ public class VersionMessage extends P2PMessage {
 		b = b.getSubBuffer(4);
 
 		if (version != PROTOCOL_VERSION) {
-			throw new ParsingException("Unsupported protocol version: "
-					+ version);
+			throw new ParsingException("Unsupported protocol version: " + version);
 		}
 
 		services = new NodeServicesMessage(b);
@@ -129,8 +132,7 @@ public class VersionMessage extends P2PMessage {
 		nonce = Util.getLong(b.get(0, 8));
 		b = b.getSubBuffer(8);
 
-		VariableLengthStringMessage vUserAgent = new VariableLengthStringMessage(
-				b);
+		VariableLengthStringMessage vUserAgent = new VariableLengthStringMessage(b);
 		b = b.getSubBuffer(vUserAgent.length());
 		userAgent = vUserAgent.getMessage();
 
