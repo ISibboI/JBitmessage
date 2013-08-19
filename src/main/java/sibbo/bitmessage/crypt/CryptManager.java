@@ -98,7 +98,7 @@ public final class CryptManager {
 	 *            The public signing key.
 	 * @return True if the signature is valid, false otherwise.
 	 */
-	public boolean checkSignature(byte[] data, byte[] signature, JCEECPublicKey publicSigningKey) {
+	public boolean verifySignature(byte[] data, byte[] signature, JCEECPublicKey publicSigningKey) {
 		try {
 			Signature sig = Signature.getInstance("ECDSA", "BC");
 			sig.initVerify(publicSigningKey);
@@ -306,5 +306,11 @@ public final class CryptManager {
 		 * getQ ( ) , y ) ) ;
 		 */
 		return new JCEECPublicKey("ECDH", new ECPublicKeySpec(w, newECKeyParameters));
+	}
+
+	public KeyPair generateSigningKeyPair() {
+		synchronized (skpg) {
+			return skpg.generateKeyPair();
+		}
 	}
 }

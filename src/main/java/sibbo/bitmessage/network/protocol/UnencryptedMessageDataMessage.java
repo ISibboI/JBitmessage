@@ -147,7 +147,7 @@ public class UnencryptedMessageDataMessage extends Message {
 
 		signature = b.get(0, (int) length);
 
-		if (!CryptManager.getInstance().checkSignature(signed.get(0, b.getOffset() - signed.getOffset()), signature,
+		if (!CryptManager.getInstance().verifySignature(signed.get(0, b.getOffset() - signed.getOffset()), signature,
 				publicSigningKey)) {
 			throw new ParsingException("Wrong signature.");
 		}

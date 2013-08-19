@@ -1,11 +1,13 @@
 package sibbo.bitmessage.crypt;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.UnsupportedEncodingException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.util.Random;
 
 import org.bouncycastle.jce.provider.JCEECPrivateKey;
 import org.bouncycastle.jce.provider.JCEECPublicKey;
@@ -42,5 +44,17 @@ public class CryptManagerTest {
 		String result = new String(decrypted, "UTF-8");
 
 		assertEquals(message + " != " + result, message, result);
+	}
+
+	@Test
+	public void testSigning() {
+		Random r = new Random();
+		byte[] data = new byte[1021];
+		r.nextBytes(data);
+		KeyPair key = CryptManager.getInstance().generateSigningKeyPair();
+
+		byte[] signature = CryptManager.getInstance().sign(data, (JCEECPrivateKey) key.getPrivate());
+
+		assertTrue(CryptManager.getInstance().verifySignature(data, signature, (JCEECPublicKey) key.getPublic()));
 	}
 }
