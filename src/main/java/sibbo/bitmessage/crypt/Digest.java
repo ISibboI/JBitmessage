@@ -1,10 +1,15 @@
 package sibbo.bitmessage.crypt;
 
+import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Provides easy access for several hash-functions.
@@ -23,8 +28,10 @@ public final class Digest {
 	 * Returns the first {@code digestLength} bytes of the sha512 sum of
 	 * {@code bytes}.
 	 * 
-	 * @param bytes The input for sha512.
-	 * @param digestLength The number of bytes to return.
+	 * @param bytes
+	 *            The input for sha512.
+	 * @param digestLength
+	 *            The number of bytes to return.
 	 * @return The first {@code digestLength} bytes of the sha512 sum of
 	 *         {@code bytes}..
 	 */
@@ -45,7 +52,8 @@ public final class Digest {
 	/**
 	 * Returns the sha512 sum of {@code bytes}.
 	 * 
-	 * @param bytes The input for sha512.
+	 * @param bytes
+	 *            The input for sha512.
 	 * @return The sha512 sum of {@code bytes}.
 	 */
 	public static byte[] sha512(byte[] data) {
@@ -55,7 +63,8 @@ public final class Digest {
 	/**
 	 * Returns the sha512 sum of all given bytes.
 	 * 
-	 * @param data The bytes
+	 * @param data
+	 *            The bytes
 	 * @return The sha512 sum of all given bytes.
 	 */
 	public static byte[] sha512(byte[]... data) {
@@ -79,7 +88,8 @@ public final class Digest {
 	/**
 	 * Returns the ripemd160 sum of the given data.
 	 * 
-	 * @param data The data.
+	 * @param data
+	 *            The data.
 	 * @return The ripemd160 sum of the given data.
 	 */
 	public static byte[] ripemd160(byte[] data) {
@@ -99,12 +109,34 @@ public final class Digest {
 	/**
 	 * Calculates the digest of the given key pair.
 	 * 
-	 * @param publicSigningKey The public signing key.
-	 * @param publicEncryptionKey The public encryption key.
+	 * @param publicSigningKey
+	 *            The public signing key.
+	 * @param publicEncryptionKey
+	 *            The public encryption key.
 	 * @return The digest of the given key pair.
 	 */
-	public static byte[] keyDigest(byte[] publicSigningKey,
-			byte[] publicEncryptionKey) {
+	public static byte[] keyDigest(byte[] publicSigningKey, byte[] publicEncryptionKey) {
 		return ripemd160(sha512(publicSigningKey, publicEncryptionKey));
+	}
+
+	/**
+	 * Calculates the HmacSHA256 from the given key and data.
+	 * 
+	 * @param data
+	 *            The data.
+	 * @param key
+	 *            The key.
+	 * @return The HmacSHA256.
+	 */
+	public static byte[] hmacSHA256(byte[] data, byte[] key) {
+		try {
+			Mac mac = Mac.getInstance("HmacSHA256", "BC");
+			mac.init(new SecretKeySpec(key, "HmacSHA256"));
+			return mac.doFinal(data);
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException e) {
+			LOG.log(Level.SEVERE, "Could not generate HMAC.", e);
+			System.exit(1);
+			return null;
+		}
 	}
 }

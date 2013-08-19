@@ -47,7 +47,8 @@ public class ObjectParser implements Runnable {
 	/**
 	 * Creates a new object parser with the given addresses.
 	 * 
-	 * @param addresses The addresses.
+	 * @param addresses
+	 *            The addresses.
 	 */
 	public ObjectParser(Collection<BMAddress> addresses) {
 		this.addresses.addAll(addresses);
@@ -75,8 +76,11 @@ public class ObjectParser implements Runnable {
 				BMAddress addr = null;
 
 				for (BMAddress a : addresses) {
-					kd = CryptManager.getInstance().tryDecryption(m.getEncrypted(),
-							a.getPrivateEncryptionKey());
+					kd = CryptManager.getInstance().tryDecryption(new KeyDataPair(
+							CryptManager.getInstance()
+									.createKeyPairWithPrivateKey(
+											a.getPrivateEncryptionKey()),
+							m.getEncrypted()));
 
 					if (kd != null) {
 						addr = a;
@@ -121,7 +125,8 @@ public class ObjectParser implements Runnable {
 	/**
 	 * Schedules the parsing of the given message.
 	 * 
-	 * @param m The message to parse.
+	 * @param m
+	 *            The message to parse.
 	 */
 	public void parse(MsgMessage m) {
 		synchronized (queue) {
@@ -139,7 +144,8 @@ public class ObjectParser implements Runnable {
 	/**
 	 * Adds the given address to the set of addresses.
 	 * 
-	 * @param address The address to add.
+	 * @param address
+	 *            The address to add.
 	 */
 	public void addPrivateKey(BMAddress address) {
 		Objects.requireNonNull(address, "address must not be null.");

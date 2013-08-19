@@ -20,19 +20,20 @@ public final class Util {
 	 * Returns a byte array containing the bytes of the given integer in big
 	 * endian order.
 	 * 
-	 * @param i The integer to convert.
+	 * @param i
+	 *            The integer to convert.
 	 * @return A byte array containing the 4 bytes of the given integer in big
 	 *         endian order.
 	 */
 	public static byte[] getBytes(int i) {
-		return new byte[] { (byte) (i >> 24), (byte) (i >> 16 & 0xFF),
-				(byte) (i >> 8 & 0xFF), (byte) (i & 0xFF) };
+		return new byte[] { (byte) (i >> 24), (byte) (i >> 16 & 0xFF), (byte) (i >> 8 & 0xFF), (byte) (i & 0xFF) };
 	}
 
 	/**
 	 * Creates an integer created from the given bytes.
 	 * 
-	 * @param b The byte data in big endian order.
+	 * @param b
+	 *            The byte data in big endian order.
 	 * @return An integer created from the given bytes.
 	 */
 	public static int getInt(byte[] b) {
@@ -50,21 +51,21 @@ public final class Util {
 	 * Returns a byte array containing the bytes of the given long in big endian
 	 * order.
 	 * 
-	 * @param l The long to convert.
+	 * @param l
+	 *            The long to convert.
 	 * @return A byte array containing the 4 bytes of the given long in big
 	 *         endian order.
 	 */
 	public static byte[] getBytes(long l) {
-		return new byte[] { (byte) (l >> 56), (byte) (l >> 48),
-				(byte) (l >> 40), (byte) (l >> 32), (byte) (l >> 24),
-				(byte) (l >> 16 & 0xFF), (byte) (l >> 8 & 0xFF),
-				(byte) (l & 0xFF) };
+		return new byte[] { (byte) (l >> 56), (byte) (l >> 48), (byte) (l >> 40), (byte) (l >> 32), (byte) (l >> 24),
+				(byte) (l >> 16 & 0xFF), (byte) (l >> 8 & 0xFF), (byte) (l & 0xFF) };
 	}
 
 	/**
 	 * Creates a long created from the given bytes.
 	 * 
-	 * @param b The byte data in big endian order.
+	 * @param b
+	 *            The byte data in big endian order.
 	 * @return A long created from the given bytes.
 	 */
 	public static long getLong(byte[] b) {
@@ -80,5 +81,14 @@ public final class Util {
 		l |= (b[7] & 0xFFL);
 
 		return l;
+	}
+
+	public static short getShort(byte[] b, int offset) {
+		short s = 0;
+
+		s |= (b[offset] & 0xFF) << 8;
+		s |= (b[offset + 1] & 0xFF);
+
+		return s;
 	}
 }

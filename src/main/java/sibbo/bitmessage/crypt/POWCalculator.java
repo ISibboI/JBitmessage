@@ -12,8 +12,7 @@ import sibbo.bitmessage.network.protocol.Util;
  * @version 1.0
  */
 public class POWCalculator implements POWListener {
-	private static final Logger LOG = Logger.getLogger(POWCalculator.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(POWCalculator.class.getName());
 
 	/** The amount of threads to use per CPU. */
 	private static final int THREADS_PER_CPU = 1;
@@ -33,10 +32,12 @@ public class POWCalculator implements POWListener {
 	/**
 	 * Creates a new POWCalculator.
 	 * 
-	 * @param target The target collision quality.
-	 * @param initialHash The hash of the message.
-	 * @param targetLoad The target system load created by the calculation. (Per
-	 *            CPU)
+	 * @param target
+	 *            The target collision quality.
+	 * @param initialHash
+	 *            The hash of the message.
+	 * @param targetLoad
+	 *            The target system load created by the calculation. (Per CPU)
 	 */
 	public POWCalculator(long target, byte[] initialHash, float targetLoad) {
 		this.target = target;
@@ -47,14 +48,14 @@ public class POWCalculator implements POWListener {
 	/**
 	 * Calculate the POW.<br />
 	 * <b>WARNING: This can take a long time.</b>
+	 * 
+	 * @return A nonce that fulfills the collision quality condition.
 	 */
 	public synchronized byte[] execute() {
-		POWWorker[] workers = new POWWorker[Runtime.getRuntime()
-				.availableProcessors() * THREADS_PER_CPU];
+		POWWorker[] workers = new POWWorker[Runtime.getRuntime().availableProcessors() * THREADS_PER_CPU];
 
 		for (int i = 0; i < workers.length; i++) {
-			workers[i] = new POWWorker(target, i, workers.length, initialHash,
-					this, targetLoad / THREADS_PER_CPU);
+			workers[i] = new POWWorker(target, i, workers.length, initialHash, this, targetLoad / THREADS_PER_CPU);
 			new Thread(workers[i], "POW Worker No. " + i).start();
 		}
 
