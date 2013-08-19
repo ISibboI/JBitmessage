@@ -39,7 +39,7 @@ public class CryptManagerTest {
 
 		System.out.println();
 
-		byte[] decrypted = CryptManager.getInstance().tryDecryption(encrypted, (JCEECPrivateKey) key.getPrivate());
+		byte[] decrypted = CryptManager.getInstance().decrypt(encrypted, (JCEECPrivateKey) key.getPrivate());
 
 		String result = new String(decrypted, "UTF-8");
 

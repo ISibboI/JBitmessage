@@ -21,11 +21,10 @@ import sibbo.bitmessage.network.protocol.ParsingException;
 import sibbo.bitmessage.network.protocol.UnencryptedMessageDataMessage;
 
 /**
- * Tries to decrypt msg messages.
+ * Tries to decrypt messages.
  * 
  * @author Sebastian Schmidt
  * @version 1.0
- * 
  */
 public class ObjectParser implements Runnable {
 	private static final Logger LOG = Logger.getLogger(ObjectParser.class.getName());
@@ -74,9 +73,8 @@ public class ObjectParser implements Runnable {
 				BMAddress addr = null;
 
 				for (BMAddress a : addresses) {
-					result = CryptManager.getInstance().tryDecryption(m.getEncrypted(), a.getPrivateEncryptionKey());
-
-					if (result != null) {
+					if (CryptManager.getInstance().checkMac(m.getEncrypted(), a.getPrivateEncryptionKey())) {
+						result = CryptManager.getInstance().decrypt(m.getEncrypted(), a.getPrivateEncryptionKey());
 						addr = a;
 						break;
 					}

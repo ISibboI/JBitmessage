@@ -7,6 +7,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.security.Security;
 import java.security.Signature;
@@ -132,24 +133,26 @@ public final class CryptManager {
 	 * @param encrypted
 	 *            The data to decrypt.
 	 * @return A KeyDataPair containing the key that was used for decryption and
-	 *         the decrypted data or null, if the data could not be decrypted
-	 *         with the given key.
+	 *         the decrypted data.
 	 */
-	public byte[] tryDecryption(EncryptedMessage encrypted, JCEECPrivateKey key) {
+	public byte[] decrypt(EncryptedMessage encrypted, JCEECPrivateKey key) {
 		ECPoint point = encrypted.getPublicKey().getQ().multiply(key.getD());
 
 		byte[] tmpKey = Digest.sha512(Util.getUnsignedBytes(point.getX().toBigInteger(), 32));
 		byte[] key_e = Arrays.copyOf(tmpKey, 32);
-		byte[] key_m = Arrays.copyOfRange(tmpKey, 32, 64);
-
-		if (!Arrays.equals(encrypted.getMac(), Digest.hmacSHA256(encrypted.getEncrypted(), key_m))) {
-			LOG.log(Level.FINE, "Wrong mac");
-			return null;
-		}
 
 		byte[] plain = doAES(key_e, encrypted.getIV(), encrypted.getEncrypted(), false);
 
 		return plain;
+	}
+
+	public boolean checkMac(EncryptedMessage encrypted, JCEECPrivateKey key) {
+		ECPoint point = encrypted.getPublicKey().getQ().multiply(key.getD());
+
+		byte[] tmpKey = Digest.sha512(Util.getUnsignedBytes(point.getX().toBigInteger(), 32));
+		byte[] key_m = Arrays.copyOfRange(tmpKey, 32, 64);
+
+		return Arrays.equals(encrypted.getMac(), Digest.hmacSHA256(encrypted.getEncrypted(), key_m));
 	}
 
 	/**
@@ -281,7 +284,7 @@ public final class CryptManager {
 	 *            The private encryption key.
 	 * @return A KeyPair containing only the given private key.
 	 */
-	public KeyPair createKeyPairWithPrivateKey(byte[] privateEncryptionKey) {
+	public KeyPair createKeyPairWithPrivateKey(PrivateKey key) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -297,6 +300,16 @@ public final class CryptManager {
 		}
 	}
 
+	/**
+	 * Creates a JCEECPublicKey with the given coordinates. The key will have
+	 * valid parameters.
+	 * 
+	 * @param x
+	 *            The x coordinate on the curve.
+	 * @param y
+	 *            The y coordinate on the curve.
+	 * @return A JCEECPublicKey with the given coordinates.
+	 */
 	public JCEECPublicKey createPublicEncryptionKey(BigInteger x, BigInteger y) {
 		java.security.spec.ECPoint w = new java.security.spec.ECPoint(x, y);
 		/*
@@ -308,6 +321,11 @@ public final class CryptManager {
 		return new JCEECPublicKey("ECDH", new ECPublicKeySpec(w, newECKeyParameters));
 	}
 
+	/**
+	 * Generates a new random ECDSA key pair.
+	 * 
+	 * @return A new random ECDSA key pair.
+	 */
 	public KeyPair generateSigningKeyPair() {
 		synchronized (skpg) {
 			return skpg.generateKeyPair();
