@@ -27,6 +27,8 @@ import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.JCEECPrivateKey;
 import org.bouncycastle.jce.provider.JCEECPublicKey;
 import org.bouncycastle.jce.spec.ECParameterSpec;
+import org.bouncycastle.math.ec.ECCurve;
+import org.bouncycastle.math.ec.ECFieldElement;
 import org.bouncycastle.math.ec.ECPoint;
 
 import sibbo.bitmessage.Options;
@@ -92,15 +94,41 @@ public final class CryptManager {
 	 * 
 	 * @param encrypted
 	 *            The data to decrypt.
-	 * @param key
-	 *            The key to try.
 	 * @return A KeyDataPair containing the key that was used for decryption and
 	 *         the decrypted data or null, if the data could not be decrypted
 	 *         with the given key.
 	 */
 	public KeyDataPair tryDecryption(KeyDataPair encrypted) {
-		// TODO
-		return null;
+		byte[] iv = new byte[16];
+		System.arraycopy(encrypted.getData(), 0, iv, 0, 16);
+		byte[] mac = new byte[32];
+		System.arraycopy(encrypted.getData(), encrypted.getData().length - 32, mac, 0, 32);
+
+		int xlength = Util.getShort(encrypted.getData(), 18);
+		BigInteger x = getUnsignedBigInteger(encrypted.getData(), 20, xlength);
+		int ylength = Util.getShort(encrypted.getData(), 20 + xlength);
+		BigInteger y = getUnsignedBigInteger(encrypted.getData(), 22 + xlength, ylength);
+
+		ECPoint point = new ECPoint.Fp(ecGenSpec.getCurve(), new ECFieldElement.Fp(
+				((ECCurve.Fp) ecGenSpec.getCurve()).getQ(), x), new ECFieldElement.Fp(
+				((ECCurve.Fp) ecGenSpec.getCurve()).getQ(), y));
+
+		point = point.multiply(((JCEECPrivateKey) encrypted.getKey().getPrivate()).getD());
+
+		byte[] data = new byte[encrypted.getData().length - 16 - 32 - 6 - xlength - ylength];
+		System.arraycopy(encrypted.getData(), 16 + 6 + xlength + ylength, data, 0, data.length);
+
+		byte[] tmpKey = Digest.sha512(getBytes(point.getX().toBigInteger(), 32));
+		byte[] key_e = Arrays.copyOf(tmpKey, 32);
+		byte[] key_m = Arrays.copyOfRange(tmpKey, 32, 64);
+
+		if (!Arrays.equals(mac, Digest.hmacSHA256(data, key_m))) {
+			return null;
+		}
+
+		byte[] plain = doAES(key_e, iv, encrypted.getData(), false);
+
+		return new KeyDataPair(encrypted.getKey(), plain);
 	}
 
 	/**
@@ -128,13 +156,15 @@ public final class CryptManager {
 		byte[] encrypted = doAES(key_e, iv, plain.getData(), true);
 		byte[] mac = Digest.hmacSHA256(encrypted, key_m);
 
+		ECPoint randomPoint = ((JCEECPublicKey) plain.getKey().getPublic()).getQ();
+
 		byte[] result = new byte[16 + 70 + encrypted.length + 32];
 		System.arraycopy(iv, 0, result, 0, 16);
 		System.arraycopy(new byte[] { 0x02, (byte) 0xCA }, 0, result, 16, 2);
 		System.arraycopy(new byte[] { 0x00, 0x20 }, 0, result, 18, 2);
-		System.arraycopy(getBytes(point.getX().toBigInteger(), 32), 0, result, 20, 32);
+		System.arraycopy(getBytes(randomPoint.getX().toBigInteger(), 32), 0, result, 20, 32);
 		System.arraycopy(new byte[] { 0x00, 0x20 }, 0, result, 52, 2);
-		System.arraycopy(getBytes(point.getY().toBigInteger(), 32), 0, result, 54, 32);
+		System.arraycopy(getBytes(randomPoint.getY().toBigInteger(), 32), 0, result, 54, 32);
 		System.arraycopy(encrypted, 0, result, 16 + 70, encrypted.length);
 		System.arraycopy(mac, 0, result, 16 + 70 + encrypted.length, 32);
 
