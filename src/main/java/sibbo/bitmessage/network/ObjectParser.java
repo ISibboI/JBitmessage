@@ -15,7 +15,6 @@ import java.util.logging.Logger;
 
 import sibbo.bitmessage.crypt.BMAddress;
 import sibbo.bitmessage.crypt.CryptManager;
-import sibbo.bitmessage.crypt.KeyDataPair;
 import sibbo.bitmessage.network.protocol.InputBuffer;
 import sibbo.bitmessage.network.protocol.MsgMessage;
 import sibbo.bitmessage.network.protocol.ParsingException;
@@ -29,8 +28,7 @@ import sibbo.bitmessage.network.protocol.UnencryptedMessageDataMessage;
  * 
  */
 public class ObjectParser implements Runnable {
-	private static final Logger LOG = Logger.getLogger(ObjectParser.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(ObjectParser.class.getName());
 
 	/** Messages to decrypt. */
 	private Queue<MsgMessage> queue = new LinkedList<>();
@@ -72,43 +70,32 @@ public class ObjectParser implements Runnable {
 					LOG.log(Level.WARNING, "Sleeping interrupted!", e);
 				}
 			} else {
-				KeyDataPair kd = null;
+				byte[] result = null;
 				BMAddress addr = null;
 
 				for (BMAddress a : addresses) {
-					kd = CryptManager.getInstance().tryDecryption(new KeyDataPair(
-							CryptManager.getInstance()
-									.createKeyPairWithPrivateKey(
-											a.getPrivateEncryptionKey()),
-							m.getEncrypted()));
+					result = CryptManager.getInstance().tryDecryption(m.getEncrypted(), a.getPrivateEncryptionKey());
 
-					if (kd != null) {
+					if (result != null) {
 						addr = a;
 						break;
 					}
 				}
 
-				if (kd != null) {
+				if (result != null) {
 					try {
-						UnencryptedMessageDataMessage u = new UnencryptedMessageDataMessage(
-								new InputBuffer(new ByteArrayInputStream(
-										kd.getData()), kd.getData().length,
-										kd.getData().length));
+						UnencryptedMessageDataMessage u = new UnencryptedMessageDataMessage(new InputBuffer(
+								new ByteArrayInputStream(result), result.length, result.length));
 
-						if (!Arrays.equals(u.getDestinationRipe(),
-								addr.getRipe())) {
-							LOG.log(Level.WARNING,
-									"Received message that contained a wrong destination ripe.");
+						if (!Arrays.equals(u.getDestinationRipe(), addr.getRipe())) {
+							LOG.log(Level.WARNING, "Received message that contained a wrong destination ripe.");
 						} else {
 							fireMessageReceived(u);
 						}
 					} catch (IOException e) {
-						LOG.log(Level.SEVERE,
-								"Could not read from local byte[]!", e);
+						LOG.log(Level.SEVERE, "Could not read from local byte[]!", e);
 					} catch (ParsingException e) {
-						LOG.log(Level.WARNING,
-								"Received a message that we could decrypt but not parse.",
-								e);
+						LOG.log(Level.WARNING, "Received a message that we could decrypt but not parse.", e);
 					}
 
 				}

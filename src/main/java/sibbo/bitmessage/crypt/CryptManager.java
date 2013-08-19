@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
 import java.security.Security;
+import java.security.spec.ECPublicKeySpec;
 import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -27,11 +28,10 @@ import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.JCEECPrivateKey;
 import org.bouncycastle.jce.provider.JCEECPublicKey;
 import org.bouncycastle.jce.spec.ECParameterSpec;
-import org.bouncycastle.math.ec.ECCurve;
-import org.bouncycastle.math.ec.ECFieldElement;
 import org.bouncycastle.math.ec.ECPoint;
 
 import sibbo.bitmessage.Options;
+import sibbo.bitmessage.network.protocol.EncryptedMessage;
 import sibbo.bitmessage.network.protocol.Util;
 
 public final class CryptManager {
@@ -56,6 +56,7 @@ public final class CryptManager {
 
 	private KeyPairGenerator kpg;
 	private ECParameterSpec ecGenSpec;
+	private java.security.spec.ECParameterSpec newECKeyParameters;
 
 	public boolean initialize() {
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
@@ -64,6 +65,7 @@ public final class CryptManager {
 			kpg = KeyPairGenerator.getInstance("ECIES", "BC");
 			ecGenSpec = ECNamedCurveTable.getParameterSpec("secp256k1");
 			kpg.initialize(ecGenSpec, new SecureRandom());
+			newECKeyParameters = ((JCEECPublicKey) kpg.generateKeyPair().getPublic()).getParams();
 		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException e) {
 			LOG.log(Level.SEVERE, "No ECIES cryptography available!", e);
 			return false;
@@ -80,11 +82,11 @@ public final class CryptManager {
 	 *            The signed data.
 	 * @param signature
 	 *            The signature.
-	 * @param key
+	 * @param publicSigningKey
 	 *            The public signing key.
 	 * @return True if the signature is valid, false otherwise.
 	 */
-	public boolean checkSignature(byte[] data, byte[] signature, byte[] key) {
+	public boolean checkSignature(byte[] data, byte[] signature, JCEECPublicKey publicSigningKey) {
 		// TODO Auto-generated method stub
 		return true;
 	}
@@ -98,38 +100,21 @@ public final class CryptManager {
 	 *         the decrypted data or null, if the data could not be decrypted
 	 *         with the given key.
 	 */
-	public KeyDataPair tryDecryption(KeyDataPair encrypted) {
-		byte[] iv = new byte[16];
-		System.arraycopy(encrypted.getData(), 0, iv, 0, 16);
-		byte[] mac = new byte[32];
-		System.arraycopy(encrypted.getData(), encrypted.getData().length - 32, mac, 0, 32);
+	public byte[] tryDecryption(EncryptedMessage encrypted, JCEECPrivateKey key) {
+		ECPoint point = encrypted.getPublicKey().getQ().multiply(key.getD());
 
-		int xlength = Util.getShort(encrypted.getData(), 18);
-		BigInteger x = getUnsignedBigInteger(encrypted.getData(), 20, xlength);
-		int ylength = Util.getShort(encrypted.getData(), 20 + xlength);
-		BigInteger y = getUnsignedBigInteger(encrypted.getData(), 22 + xlength, ylength);
-
-		ECPoint point = new ECPoint.Fp(ecGenSpec.getCurve(), new ECFieldElement.Fp(
-				((ECCurve.Fp) ecGenSpec.getCurve()).getQ(), x), new ECFieldElement.Fp(
-				((ECCurve.Fp) ecGenSpec.getCurve()).getQ(), y));
-
-		point = point.multiply(((JCEECPrivateKey) encrypted.getKey().getPrivate()).getD());
-
-		byte[] data = new byte[encrypted.getData().length - 16 - 32 - 6 - xlength - ylength];
-		System.arraycopy(encrypted.getData(), 16 + 6 + xlength + ylength, data, 0, data.length);
-
-		byte[] tmpKey = Digest.sha512(getBytes(point.getX().toBigInteger(), 32));
+		byte[] tmpKey = Digest.sha512(Util.getUnsignedBytes(point.getX().toBigInteger(), 32));
 		byte[] key_e = Arrays.copyOf(tmpKey, 32);
 		byte[] key_m = Arrays.copyOfRange(tmpKey, 32, 64);
 
-		if (!Arrays.equals(mac, Digest.hmacSHA256(data, key_m))) {
+		if (!Arrays.equals(encrypted.getMac(), Digest.hmacSHA256(encrypted.getEncrypted(), key_m))) {
 			LOG.log(Level.FINE, "Wrong mac");
 			return null;
 		}
 
-		byte[] plain = doAES(key_e, iv, data, false);
+		byte[] plain = doAES(key_e, encrypted.getIV(), encrypted.getEncrypted(), false);
 
-		return new KeyDataPair(encrypted.getKey(), plain);
+		return plain;
 	}
 
 	/**
@@ -139,33 +124,20 @@ public final class CryptManager {
 	 *            The data and key.
 	 * @return The data encrypted with the given key.
 	 */
-	public KeyDataPair encrypt(KeyDataPair plain) {
+	public EncryptedMessage encrypt(byte[] plain, JCEECPublicKey key) {
 		KeyPair random = generateKeyPair();
 
-		ECPoint point = ((JCEECPublicKey) plain.getKey().getPublic()).getQ().multiply(
-				((JCEECPrivateKey) random.getPrivate()).getD());
+		ECPoint point = key.getQ().multiply(((JCEECPrivateKey) random.getPrivate()).getD());
 		byte[] tmpKey = deriveKey(point);
 		byte[] key_e = Arrays.copyOfRange(tmpKey, 0, 32);
 		byte[] key_m = Arrays.copyOfRange(tmpKey, 32, 64);
 		byte[] iv = new byte[16];
 		new SecureRandom().nextBytes(iv);
 
-		byte[] encrypted = doAES(key_e, iv, plain.getData(), true);
+		byte[] encrypted = doAES(key_e, iv, plain, true);
 		byte[] mac = Digest.hmacSHA256(encrypted, key_m);
 
-		ECPoint randomPoint = ((JCEECPublicKey) random.getPublic()).getQ();
-
-		byte[] result = new byte[16 + 70 + encrypted.length + 32];
-		System.arraycopy(iv, 0, result, 0, 16);
-		System.arraycopy(new byte[] { 0x02, (byte) 0xCA }, 0, result, 16, 2);
-		System.arraycopy(new byte[] { 0x00, 0x20 }, 0, result, 18, 2);
-		System.arraycopy(getBytes(randomPoint.getX().toBigInteger(), 32), 0, result, 20, 32);
-		System.arraycopy(new byte[] { 0x00, 0x20 }, 0, result, 52, 2);
-		System.arraycopy(getBytes(randomPoint.getY().toBigInteger(), 32), 0, result, 54, 32);
-		System.arraycopy(encrypted, 0, result, 16 + 70, encrypted.length);
-		System.arraycopy(mac, 0, result, 16 + 70 + encrypted.length, 32);
-
-		return new KeyDataPair(plain.getKey(), result);
+		return new EncryptedMessage(iv, (JCEECPublicKey) random.getPublic(), encrypted, mac);
 	}
 
 	/**
@@ -203,47 +175,6 @@ public final class CryptManager {
 	}
 
 	/**
-	 * Returns a positive BigInteger from the given bytes. (Big endian)
-	 * 
-	 * @param data
-	 *            The bytes.
-	 * @param offset
-	 *            The first byte.
-	 * @param length
-	 *            The amount of bytes to process.
-	 * @return A BigInteger from the given bytes.
-	 */
-	private BigInteger getUnsignedBigInteger(byte[] data, int offset, int length) {
-		byte[] value = new byte[length + 1];
-		System.arraycopy(data, offset, value, 1, length);
-
-		return new BigInteger(value);
-	}
-
-	/**
-	 * Returns a byte[] representation of the given big integer, cutting it to
-	 * the given length.
-	 * 
-	 * @param number
-	 *            The BigInteger.
-	 * @param length
-	 *            The maximum length.
-	 * @return The last <code>length</code> bytes of the given big integer,
-	 *         filled with zeros if necessary.
-	 */
-	private byte[] getBytes(BigInteger number, int length) {
-		byte[] value = number.toByteArray();
-		byte[] result = new byte[length];
-
-		int i = value.length == length + 1 ? 1 : 0;
-		for (; i < value.length; i++) {
-			result[i + length - value.length] = value[i];
-		}
-
-		return result;
-	}
-
-	/**
 	 * Derives a 512 bit key from the given ECPoint.
 	 * 
 	 * @param p
@@ -251,7 +182,7 @@ public final class CryptManager {
 	 * @return A 512 bit key.
 	 */
 	private byte[] deriveKey(ECPoint p) {
-		return Digest.sha512(getBytes(p.getX().toBigInteger(), 32));
+		return Digest.sha512(Util.getUnsignedBytes(p.getX().toBigInteger(), 32));
 	}
 
 	/**
@@ -329,5 +260,16 @@ public final class CryptManager {
 		synchronized (kpg) {
 			return kpg.generateKeyPair();
 		}
+	}
+
+	public JCEECPublicKey createPublicKey(BigInteger x, BigInteger y) {
+		java.security.spec.ECPoint w = new java.security.spec.ECPoint(x, y);
+		/*
+		 * ECPoint . Fp ( ecGenSpec . getCurve ( ) , new ECFieldElement . Fp ( (
+		 * ( ECCurve . Fp ) ecGenSpec . getCurve ( ) ) . getQ ( ) , x ) , new
+		 * ECFieldElement . Fp ( ( ( ECCurve . Fp ) ecGenSpec . getCurve ( ) ) .
+		 * getQ ( ) , y ) ) ;
+		 */
+		return new JCEECPublicKey("ECDH", new ECPublicKeySpec(w, newECKeyParameters));
 	}
 }

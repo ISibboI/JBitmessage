@@ -13,8 +13,7 @@ import java.util.logging.Logger;
  * @version 1.0
  */
 public class MsgMessage extends POWMessage {
-	private static final Logger LOG = Logger.getLogger(MsgMessage.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(MsgMessage.class.getName());
 
 	/** The command string for this message type. */
 	public static final String COMMAND = "msg";
@@ -23,7 +22,7 @@ public class MsgMessage extends POWMessage {
 	private long stream;
 
 	/** The encrypted message. */
-	private byte[] encrypted;
+	private EncryptedMessage encrypted;
 
 	/**
 	 * Creates a new msg message.
@@ -31,7 +30,7 @@ public class MsgMessage extends POWMessage {
 	 * @param stream
 	 * @param encrypted
 	 */
-	public MsgMessage(long stream, byte[] encrypted) {
+	public MsgMessage(long stream, EncryptedMessage encrypted) {
 		Objects.requireNonNull(encrypted);
 
 		if (stream == 0) {
@@ -53,18 +52,17 @@ public class MsgMessage extends POWMessage {
 		return stream;
 	}
 
-	public byte[] getEncrypted() {
+	public EncryptedMessage getEncrypted() {
 		return encrypted;
 	}
 
 	@Override
-	protected void readPayload(InputBuffer b) throws IOException,
-			ParsingException {
+	protected void readPayload(InputBuffer b) throws IOException, ParsingException {
 		VariableLengthIntegerMessage v = new VariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		stream = v.getLong();
 
-		encrypted = b.get(0, b.length());
+		encrypted = new EncryptedMessage(b);
 	}
 
 	@Override
@@ -73,7 +71,7 @@ public class MsgMessage extends POWMessage {
 
 		try {
 			b.write(new VariableLengthIntegerMessage(stream).getBytes());
-			b.write(encrypted);
+			b.write(encrypted.getBytes());
 		} catch (IOException e) {
 			LOG.log(Level.SEVERE, "Could not write bytes!", e);
 			System.exit(1);

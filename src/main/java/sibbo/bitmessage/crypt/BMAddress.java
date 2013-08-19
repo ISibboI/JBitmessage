@@ -1,8 +1,10 @@
 package sibbo.bitmessage.crypt;
 
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.logging.Logger;
+
+import org.bouncycastle.jce.provider.JCEECPrivateKey;
+import org.bouncycastle.jce.provider.JCEECPublicKey;
 
 import sibbo.bitmessage.network.protocol.Util;
 
@@ -13,46 +15,35 @@ import sibbo.bitmessage.network.protocol.Util;
  * @version 1.0
  */
 public class BMAddress {
-	private static final Logger LOG = Logger.getLogger(BMAddress.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(BMAddress.class.getName());
 
 	/** The public signing key. */
-	private byte[] publicSigningKey;
+	private JCEECPublicKey publicSigningKey;
 
 	/** The public encryption key. */
-	private byte[] publicEncryptionKey;
+	private JCEECPublicKey publicEncryptionKey;
 
 	/** The ripe hash of the address. */
 	private byte[] ripe;
 
 	/** The private signing key. */
-	private byte[] privateSigningKey;
+	private JCEECPrivateKey privateSigningKey;
 
 	/** The private encryption key. */
-	private byte[] privateEncryptionKey;
+	private JCEECPrivateKey privateEncryptionKey;
 
 	/**
 	 * Creates a new bitmessage key with the given parameters. The key created
 	 * cannot be used for encryption.
 	 * 
-	 * @param publicSigningKey The public signing key.
-	 * @param publicEncryptionKey The public encryption key.
+	 * @param publicSigningKey
+	 *            The public signing key.
+	 * @param publicEncryptionKey
+	 *            The public encryption key.
 	 */
-	public BMAddress(byte[] publicSigningKey, byte[] publicEncryptionKey) {
-		Objects.requireNonNull(publicSigningKey,
-				"publicSigningKey must not be null.");
-		Objects.requireNonNull(publicEncryptionKey,
-				"publicEncryptionKey must not be null.");
-
-		if (publicSigningKey.length != 64) {
-			throw new IllegalArgumentException(
-					"publicSigningKey must have a length of 64.");
-		}
-
-		if (publicEncryptionKey.length != 64) {
-			throw new IllegalArgumentException(
-					"publicEncryptionKey must have a length of 64.");
-		}
+	public BMAddress(JCEECPublicKey publicSigningKey, JCEECPublicKey publicEncryptionKey) {
+		Objects.requireNonNull(publicSigningKey, "publicSigningKey must not be null.");
+		Objects.requireNonNull(publicEncryptionKey, "publicEncryptionKey must not be null.");
 
 		this.publicSigningKey = publicSigningKey;
 		this.publicEncryptionKey = publicEncryptionKey;
@@ -64,30 +55,20 @@ public class BMAddress {
 	 * Creates a new bitmessage key with the given parameters. The key created
 	 * cannot be used for encryption.
 	 * 
-	 * @param publicSigningKey The public signing key.
-	 * @param publicEncryptionKey The public encryption key.
-	 * @param ripe The ripe hash of the key.
+	 * @param publicSigningKey
+	 *            The public signing key.
+	 * @param publicEncryptionKey
+	 *            The public encryption key.
+	 * @param ripe
+	 *            The ripe hash of the key.
 	 */
-	public BMAddress(byte[] publicSigningKey, byte[] publicEncryptionKey,
-			byte[] ripe) {
-		Objects.requireNonNull(publicSigningKey,
-				"publicSigningKey must not be null.");
-		Objects.requireNonNull(publicEncryptionKey,
-				"publicEncryptionKey must not be null.");
+	public BMAddress(JCEECPublicKey publicSigningKey, JCEECPublicKey publicEncryptionKey, byte[] ripe) {
+		Objects.requireNonNull(publicSigningKey, "publicSigningKey must not be null.");
+		Objects.requireNonNull(publicEncryptionKey, "publicEncryptionKey must not be null.");
 		Objects.requireNonNull(ripe, "ripe must not be null.");
 
-		if (publicSigningKey.length != 64) {
-			throw new IllegalArgumentException(
-					"publicSigningKey must have a length of 64.");
-		}
-
-		if (publicEncryptionKey.length != 64) {
-			throw new IllegalArgumentException(
-					"publicEncryptionKey must have a length of 64.");
-		}
-
-		if (ripe.length != 64) {
-			throw new IllegalArgumentException("ripe must have a length of 64.");
+		if (ripe.length != 20) {
+			throw new IllegalArgumentException("ripe must have a length of 20.");
 		}
 
 		this.publicSigningKey = publicSigningKey;
@@ -95,11 +76,11 @@ public class BMAddress {
 		this.ripe = ripe;
 	}
 
-	public byte[] getPublicSigningKey() {
+	public JCEECPublicKey getPublicSigningKey() {
 		return publicSigningKey;
 	}
 
-	public byte[] getPublicEncryptionKey() {
+	public JCEECPublicKey getPublicEncryptionKey() {
 		return publicEncryptionKey;
 	}
 
@@ -107,18 +88,19 @@ public class BMAddress {
 		return ripe;
 	}
 
-	public byte[] getPrivateSigningKey() {
+	public JCEECPrivateKey getPrivateSigningKey() {
 		return privateSigningKey;
 	}
 
-	public byte[] getPrivateEncryptionKey() {
+	public JCEECPrivateKey getPrivateEncryptionKey() {
 		return privateEncryptionKey;
 	}
 
 	/**
 	 * Returns true if the given address version is supported.
 	 * 
-	 * @param addressVersion The address version to check.
+	 * @param addressVersion
+	 *            The address version to check.
 	 * @return True if the given address version is supported.
 	 */
 	public static boolean isSupported(long addressVersion) {
@@ -135,8 +117,7 @@ public class BMAddress {
 		if (o instanceof BMAddress) {
 			BMAddress b = (BMAddress) o;
 
-			return Arrays.equals(publicEncryptionKey, b.publicEncryptionKey)
-					&& Arrays.equals(publicSigningKey, b.publicSigningKey);
+			return publicEncryptionKey.equals(b.publicEncryptionKey) && publicSigningKey.equals(b.publicSigningKey);
 		} else {
 			return false;
 		}
