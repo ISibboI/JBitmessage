@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.bouncycastle.jce.provider.JCEECPublicKey;
+
 import sibbo.bitmessage.crypt.BMAddress;
 import sibbo.bitmessage.crypt.CryptManager;
 
@@ -16,8 +18,7 @@ import sibbo.bitmessage.crypt.CryptManager;
  * 
  */
 public class UnencryptedMessageDataMessage extends Message {
-	private static final Logger LOG = Logger
-			.getLogger(UnencryptedMessageDataMessage.class.getName());
+	private static final Logger LOG = Logger.getLogger(UnencryptedMessageDataMessage.class.getName());
 
 	/** This class implements version 1 messages. */
 	public static final long MESSAGE_VERSION = 1;
@@ -32,10 +33,10 @@ public class UnencryptedMessageDataMessage extends Message {
 	private BehaviorMessage behavior;
 
 	/** The ECC public key of the sender used for signing. */
-	private byte[] publicSigningKey;
+	private JCEECPublicKey publicSigningKey;
 
 	/** The ECC public key of the sender used for encryption. */
-	private byte[] publicEncryptionKey;
+	private JCEECPublicKey publicEncryptionKey;
 
 	/** The ripe hash of the public key of the receiver of the message. */
 	private byte[] destinationRipe;
@@ -52,19 +53,25 @@ public class UnencryptedMessageDataMessage extends Message {
 	/**
 	 * Creates a new unencrypted message data message with the given parameters.
 	 * 
-	 * @param addressVersion The version of the sender address.
-	 * @param stream The stream of the sender.
-	 * @param behavior The behavior of the sender.
-	 * @param publicSigningKey The public key of the sender used for signing.
-	 * @param publicEncryptionKey The public key of the sender used for
-	 *            encryption.
-	 * @param destinationRipe The ripe hash of the senders bitmessage address.
-	 * @param message The actual message.
-	 * @param acknowledgment The acknowledgment message.
+	 * @param addressVersion
+	 *            The version of the sender address.
+	 * @param stream
+	 *            The stream of the sender.
+	 * @param behavior
+	 *            The behavior of the sender.
+	 * @param publicSigningKey
+	 *            The public key of the sender used for signing.
+	 * @param publicEncryptionKey
+	 *            The public key of the sender used for encryption.
+	 * @param destinationRipe
+	 *            The ripe hash of the senders bitmessage address.
+	 * @param message
+	 *            The actual message.
+	 * @param acknowledgment
+	 *            The acknowledgment message.
 	 */
-	public UnencryptedMessageDataMessage(long addressVersion, long stream,
-			BehaviorMessage behavior, byte[] publicSigningKey,
-			byte[] publicEncryptionKey, byte[] destinationRipe,
+	public UnencryptedMessageDataMessage(long addressVersion, long stream, BehaviorMessage behavior,
+			JCEECPublicKey publicSigningKey, JCEECPublicKey publicEncryptionKey, byte[] destinationRipe,
 			MailMessage message, BaseMessage acknowledgment) {
 		this.addressVersion = addressVersion;
 		this.stream = stream;
@@ -79,8 +86,7 @@ public class UnencryptedMessageDataMessage extends Message {
 	/**
 	 * {@link Message#Message(InputBuffer)}
 	 */
-	public UnencryptedMessageDataMessage(InputBuffer b) throws IOException,
-			ParsingException {
+	public UnencryptedMessageDataMessage(InputBuffer b) throws IOException, ParsingException {
 		super(b);
 	}
 
@@ -88,36 +94,31 @@ public class UnencryptedMessageDataMessage extends Message {
 	protected void read(InputBuffer b) throws IOException, ParsingException {
 		InputBuffer signed = b.getSubBuffer(0);
 
-		VariableLengthIntegerMessage messageVersion = new VariableLengthIntegerMessage(
-				b);
+		VariableLengthIntegerMessage messageVersion = new VariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(messageVersion.length());
 
 		if (messageVersion.getLong() != MESSAGE_VERSION) {
-			throw new ParsingException(
-					"Cannot understand messages of version: " + messageVersion);
+			throw new ParsingException("Cannot understand messages of version: " + messageVersion);
 		}
 
-		VariableLengthIntegerMessage vAddressVersion = new VariableLengthIntegerMessage(
-				b);
+		VariableLengthIntegerMessage vAddressVersion = new VariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vAddressVersion.length());
 		addressVersion = vAddressVersion.getLong();
 
 		if (!BMAddress.isSupported(addressVersion)) {
-			throw new ParsingException("Unknown address version: "
-					+ addressVersion);
+			throw new ParsingException("Unknown address version: " + addressVersion);
 		}
 
-		VariableLengthIntegerMessage vStream = new VariableLengthIntegerMessage(
-				b);
+		VariableLengthIntegerMessage vStream = new VariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vStream.length());
 		stream = vStream.getLong();
 
 		behavior = new BehaviorMessage(b);
 		b = b.getSubBuffer(behavior.length());
 
-		publicSigningKey = b.get(0, 64);
+		publicSigningKey = Util.getPublicKey(b.get(0, 64));
 
-		publicEncryptionKey = b.get(64, 64);
+		publicEncryptionKey = Util.getPublicKey(b.get(64, 64));
 
 		destinationRipe = b.get(84, 64);
 		b = b.getSubBuffer(148);
@@ -125,18 +126,15 @@ public class UnencryptedMessageDataMessage extends Message {
 		message = new MailMessage(b);
 		b = b.getSubBuffer(message.length());
 
-		VariableLengthIntegerMessage vLength = new VariableLengthIntegerMessage(
-				b);
+		VariableLengthIntegerMessage vLength = new VariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vLength.length());
 		long length = vLength.getLong();
 
 		if (length < 0 || length > b.length()) {
-			throw new ParsingException("The acknowlegment data is too long: "
-					+ length);
+			throw new ParsingException("The acknowlegment data is too long: " + length);
 		}
 
-		this.acknowledgment = new BaseMessage(new InputBufferInputStream(
-				b.getSubBuffer(0, (int) length)), (int) length);
+		this.acknowledgment = new BaseMessage(new InputBufferInputStream(b.getSubBuffer(0, (int) length)), (int) length);
 		b = b.getSubBuffer((int) length);
 
 		vLength = new VariableLengthIntegerMessage(b);
@@ -144,14 +142,12 @@ public class UnencryptedMessageDataMessage extends Message {
 		length = vLength.getLong();
 
 		if (length < 0 || length > b.length()) {
-			throw new ParsingException("The signature data is too long: "
-					+ length);
+			throw new ParsingException("The signature data is too long: " + length);
 		}
 
 		signature = b.get(0, (int) length);
 
-		if (!CryptManager.getInstance().checkSignature(
-				signed.get(0, b.getOffset() - signed.getOffset()), signature,
+		if (!CryptManager.getInstance().verifySignature(signed.get(0, b.getOffset() - signed.getOffset()), signature,
 				publicSigningKey)) {
 			throw new ParsingException("Wrong signature.");
 		}
@@ -161,13 +157,12 @@ public class UnencryptedMessageDataMessage extends Message {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
 		try {
-			b.write(new VariableLengthIntegerMessage(MESSAGE_VERSION)
-					.getBytes());
+			b.write(new VariableLengthIntegerMessage(MESSAGE_VERSION).getBytes());
 			b.write(new VariableLengthIntegerMessage(addressVersion).getBytes());
 			b.write(new VariableLengthIntegerMessage(stream).getBytes());
 			b.write(behavior.getBytes());
-			b.write(publicSigningKey);
-			b.write(publicEncryptionKey);
+			b.write(Util.getBytes(publicSigningKey));
+			b.write(Util.getBytes(publicEncryptionKey));
 			b.write(destinationRipe);
 			b.write(message.getBytes());
 
@@ -188,8 +183,7 @@ public class UnencryptedMessageDataMessage extends Message {
 
 		try {
 			b.write(getBytesWithoutSignature());
-			b.write(new VariableLengthIntegerMessage(signature.length)
-					.getBytes());
+			b.write(new VariableLengthIntegerMessage(signature.length).getBytes());
 			b.write(signature);
 		} catch (IOException e) {
 			LOG.log(Level.SEVERE, "Could not write bytes!", e);
@@ -211,11 +205,11 @@ public class UnencryptedMessageDataMessage extends Message {
 		return behavior;
 	}
 
-	public byte[] getPublicSigningKey() {
+	public JCEECPublicKey getPublicSigningKey() {
 		return publicSigningKey;
 	}
 
-	public byte[] getPublicEncryptionKey() {
+	public JCEECPublicKey getPublicEncryptionKey() {
 		return publicEncryptionKey;
 	}
 

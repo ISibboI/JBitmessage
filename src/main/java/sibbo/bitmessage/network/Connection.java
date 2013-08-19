@@ -1,7 +1,5 @@
 package sibbo.bitmessage.network;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -19,7 +17,6 @@ import java.util.Queue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import sibbo.bitmessage.LoggingInitializer;
 import sibbo.bitmessage.Options;
 import sibbo.bitmessage.data.Datastore;
 import sibbo.bitmessage.network.protocol.AddrMessage;
@@ -84,7 +81,7 @@ public class Connection implements Runnable {
 	private volatile boolean stop = false;
 
 	/** If true, there is a thread operating on this object. */
-	private boolean running = false;
+	private volatile boolean running = false;
 
 	/** The socket used for the connection. */
 	private Socket s;
@@ -371,7 +368,7 @@ public class Connection implements Runnable {
 			return;
 		}
 
-		// TODO sendAddr(out);
+		sendAddr(out);
 
 		synchronized (invBuffer) {
 			if (invBuffer.size() > 0) {
@@ -518,7 +515,7 @@ public class Connection implements Runnable {
 		try {
 			s.close();
 		} catch (IOException e) {
-			LOG.log(Level.FINE, "Could not close socket.", e);
+			LOG.log(Level.WARNING, "Could not close socket.", e);
 		}
 	}
 
@@ -541,52 +538,5 @@ public class Connection implements Runnable {
 		synchronized (invBuffer) {
 			invBuffer.add(inventoryVector);
 		}
-	}
-
-	public static void main(String[] args) throws UnknownHostException {
-		LoggingInitializer.initializeLogging();
-
-		Connection c = new Connection(InetAddress.getByName("141.134.180.7"), 8444, 1L, new ConnectionListener() {
-			@Override
-			public void couldNotConnect(Connection c) {
-				System.out.println("couldNotConnect()");
-			}
-
-			@Override
-			public void connectionAborted(Connection c) {
-				System.out.println("connectionAborted()");
-			}
-
-			@Override
-			public void receivedObject(POWMessage m, Connection c) {
-				if (m.getCommand().equals("pubkey")) {
-					File f = new File("/home/sibbo/pubkey");
-
-					if (f.exists())
-						f.delete();
-
-					try {
-						f.createNewFile();
-
-						new FileOutputStream(f).write(m.getBytes());
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-
-					System.out.println("success!!!");
-					System.exit(0);
-				}
-			}
-
-			@Override
-			public void receivedNodes(List<NetworkAddressMessage> list, Connection c) {
-				System.out.println("received nodes");
-			}
-
-			@Override
-			public void advertisedObjects(List<InventoryVectorMessage> inventoryVectors, Connection c) {
-				c.requestObjects(inventoryVectors);
-			}
-		}, 541373894);
 	}
 }

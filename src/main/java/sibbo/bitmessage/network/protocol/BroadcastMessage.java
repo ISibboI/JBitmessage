@@ -7,6 +7,8 @@ import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.bouncycastle.jce.provider.JCEECPublicKey;
+
 import sibbo.bitmessage.crypt.CryptManager;
 import sibbo.bitmessage.crypt.Digest;
 
@@ -18,8 +20,7 @@ import sibbo.bitmessage.crypt.Digest;
  * @version 1.0
  */
 public class BroadcastMessage extends POWMessage {
-	private static final Logger LOG = Logger.getLogger(BroadcastMessage.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(BroadcastMessage.class.getName());
 
 	public static final String COMMAND = "broadcast";
 
@@ -36,10 +37,10 @@ public class BroadcastMessage extends POWMessage {
 	private BehaviorMessage behavior;
 
 	/** The public signing key of the sender. */
-	private byte[] publicSigningKey;
+	private JCEECPublicKey publicSigningKey;
 
 	/** The public encryption key of the sender. */
-	private byte[] publicEncryptionKey;
+	private JCEECPublicKey publicEncryptionKey;
 
 	/** The ripe hash of the senders address. */
 	private byte[] ripe;
@@ -50,25 +51,12 @@ public class BroadcastMessage extends POWMessage {
 	/** The ECDSA signature of everything that is parsed by this class. */
 	private byte[] signature;
 
-	public BroadcastMessage(long addressVersion, long stream,
-			BehaviorMessage behavior, byte[] publicSigningKey,
-			byte[] publicEncryptionKey, MailMessage message) {
+	public BroadcastMessage(long addressVersion, long stream, BehaviorMessage behavior,
+			JCEECPublicKey publicSigningKey, JCEECPublicKey publicEncryptionKey, MailMessage message) {
 		Objects.requireNonNull(behavior, "behavior must not be null.");
-		Objects.requireNonNull(publicSigningKey,
-				"publicSigningKey must not be null.");
-		Objects.requireNonNull(publicEncryptionKey,
-				"publicEncryptionKey must not be null.");
+		Objects.requireNonNull(publicSigningKey, "publicSigningKey must not be null.");
+		Objects.requireNonNull(publicEncryptionKey, "publicEncryptionKey must not be null.");
 		Objects.requireNonNull(message, "message must not be null.");
-
-		if (publicSigningKey.length != 64) {
-			throw new IllegalArgumentException(
-					"publicSigningKey must not be null.");
-		}
-
-		if (publicEncryptionKey.length != 64) {
-			throw new IllegalArgumentException(
-					"publicEncryptionKey must not be null.");
-		}
 
 		this.addressVersion = addressVersion;
 		this.stream = stream;
@@ -97,11 +85,11 @@ public class BroadcastMessage extends POWMessage {
 		return behavior;
 	}
 
-	public byte[] getPublicSigningKey() {
+	public JCEECPublicKey getPublicSigningKey() {
 		return publicSigningKey;
 	}
 
-	public byte[] getPublicEncryptionKey() {
+	public JCEECPublicKey getPublicEncryptionKey() {
 		return publicEncryptionKey;
 	}
 
@@ -118,16 +106,14 @@ public class BroadcastMessage extends POWMessage {
 	}
 
 	@Override
-	protected void readPayload(InputBuffer b) throws IOException,
-			ParsingException {
+	protected void readPayload(InputBuffer b) throws IOException, ParsingException {
 		InputBuffer signed = b.getSubBuffer(0);
 
 		VariableLengthIntegerMessage v = new VariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 
 		if (BROADCAST_VERSION != v.getLong()) {
-			throw new ParsingException("Unknown broadcast message version: "
-					+ v.getLong());
+			throw new ParsingException("Unknown broadcast message version: " + v.getLong());
 		}
 
 		v = new VariableLengthIntegerMessage(b);
@@ -141,15 +127,13 @@ public class BroadcastMessage extends POWMessage {
 		behavior = new BehaviorMessage(b);
 		b = b.getSubBuffer(behavior.length());
 
-		publicSigningKey = b.get(0, 64);
-		publicEncryptionKey = b.get(64, 64);
+		publicSigningKey = Util.getPublicKey(b.get(0, 64));
+		publicEncryptionKey = Util.getPublicKey(b.get(64, 64));
 		ripe = b.get(128, 20);
 		b = b.getSubBuffer(148);
 
-		if (!Arrays.equals(
-				Digest.keyDigest(publicSigningKey, publicEncryptionKey), ripe)) {
-			throw new ParsingException(
-					"The hash of the public keys is incorrect.");
+		if (!Arrays.equals(Digest.keyDigest(publicSigningKey, publicEncryptionKey), ripe)) {
+			throw new ParsingException("The hash of the public keys is incorrect.");
 		}
 
 		message = new MailMessage(b);
@@ -165,8 +149,7 @@ public class BroadcastMessage extends POWMessage {
 
 		signature = b.get(0, (int) length);
 
-		if (!CryptManager.getInstance().checkSignature(
-				signed.get(0, b.getOffset() - signed.getOffset()), signature,
+		if (!CryptManager.getInstance().verifySignature(signed.get(0, b.getOffset() - signed.getOffset()), signature,
 				publicSigningKey)) {
 			throw new ParsingException("Wrong signature.");
 		}
@@ -177,17 +160,15 @@ public class BroadcastMessage extends POWMessage {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
 		try {
-			b.write(new VariableLengthIntegerMessage(BROADCAST_VERSION)
-					.getBytes());
+			b.write(new VariableLengthIntegerMessage(BROADCAST_VERSION).getBytes());
 			b.write(new VariableLengthIntegerMessage(addressVersion).getBytes());
 			b.write(new VariableLengthIntegerMessage(stream).getBytes());
 			b.write(behavior.getBytes());
-			b.write(publicSigningKey);
-			b.write(publicEncryptionKey);
+			b.write(Util.getBytes(publicSigningKey));
+			b.write(Util.getBytes(publicEncryptionKey));
 			b.write(ripe);
 			b.write(message.getBytes());
-			b.write(new VariableLengthIntegerMessage(signature.length)
-					.getBytes());
+			b.write(new VariableLengthIntegerMessage(signature.length).getBytes());
 			b.write(signature);
 		} catch (IOException e) {
 			LOG.log(Level.SEVERE, "Could not write bytes!", e);

@@ -11,6 +11,10 @@ import java.util.logging.Logger;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.bouncycastle.jce.provider.JCEECPublicKey;
+
+import sibbo.bitmessage.network.protocol.Util;
+
 /**
  * Provides easy access for several hash-functions.
  * 
@@ -115,8 +119,8 @@ public final class Digest {
 	 *            The public encryption key.
 	 * @return The digest of the given key pair.
 	 */
-	public static byte[] keyDigest(byte[] publicSigningKey, byte[] publicEncryptionKey) {
-		return ripemd160(sha512(publicSigningKey, publicEncryptionKey));
+	public static byte[] keyDigest(JCEECPublicKey publicSigningKey, JCEECPublicKey publicEncryptionKey) {
+		return ripemd160(sha512(Util.getBytes(publicSigningKey), Util.getBytes(publicEncryptionKey)));
 	}
 
 	/**
