@@ -200,6 +200,6 @@ public final class Util {
 		BigInteger x = getUnsignedBigInteger(b, 0, 32);
 		BigInteger y = getUnsignedBigInteger(b, 32, 32);
 
-		return CryptManager.getInstance().createPublicKey(x, y);
+		return CryptManager.getInstance().createPublicEncryptionKey(x, y);
 	}
 }

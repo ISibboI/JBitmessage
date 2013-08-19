@@ -18,7 +18,7 @@ public class CryptManagerTest {
 	public void testECIES() throws UnsupportedEncodingException, NoSuchAlgorithmException, NoSuchProviderException {
 		CryptManager.getInstance();
 		String message = "dfschamlxeadgsfredcaxds";
-		KeyPair key = CryptManager.getInstance().generateKeyPair();
+		KeyPair key = CryptManager.getInstance().generateEncryptionKeyPair();
 		byte[] source = message.getBytes("UTF-8");
 
 		EncryptedMessage encrypted = CryptManager.getInstance().encrypt(source, (JCEECPublicKey) key.getPublic());

@@ -26,7 +26,7 @@ public class EncryptedMessageTest {
 		r.nextBytes(encrypted);
 		r.nextBytes(mac);
 
-		JCEECPublicKey key = (JCEECPublicKey) CryptManager.getInstance().generateKeyPair().getPublic();
+		JCEECPublicKey key = (JCEECPublicKey) CryptManager.getInstance().generateEncryptionKeyPair().getPublic();
 
 		EncryptedMessage source = new EncryptedMessage(iv, key, encrypted, mac);
 		byte[] encoded = source.getBytes();

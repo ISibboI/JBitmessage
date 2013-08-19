@@ -10,7 +10,7 @@ import sibbo.bitmessage.crypt.CryptManager;
 public class UtilTest {
 	@Test
 	public void testKeyEncoding() {
-		JCEECPublicKey key = (JCEECPublicKey) CryptManager.getInstance().generateKeyPair().getPublic();
+		JCEECPublicKey key = (JCEECPublicKey) CryptManager.getInstance().generateEncryptionKeyPair().getPublic();
 
 		assertEquals("The keys don't match.", key, Util.getPublicKey(Util.getBytes(key)));
 	}

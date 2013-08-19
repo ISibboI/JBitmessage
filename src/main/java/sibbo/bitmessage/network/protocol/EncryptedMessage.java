@@ -97,7 +97,7 @@ public class EncryptedMessage extends Message {
 		BigInteger y = Util.getUnsignedBigInteger(b.get(2, yLength), 0, yLength);
 		b = b.getSubBuffer(2 + yLength);
 
-		publicKey = CryptManager.getInstance().createPublicKey(x, y);
+		publicKey = CryptManager.getInstance().createPublicEncryptionKey(x, y);
 
 		encrypted = b.get(0, b.length() - 32);
 		mac = b.get(b.length() - 32, 32);

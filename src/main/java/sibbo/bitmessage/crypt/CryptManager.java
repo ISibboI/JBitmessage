@@ -2,12 +2,15 @@ package sibbo.bitmessage.crypt;
 
 import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
 import java.security.Security;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.security.spec.ECPublicKeySpec;
 import java.util.Arrays;
 import java.util.logging.Level;
@@ -58,6 +61,10 @@ public final class CryptManager {
 	private ECParameterSpec ecGenSpec;
 	private java.security.spec.ECParameterSpec newECKeyParameters;
 
+	private KeyPairGenerator skpg;
+	private ECParameterSpec ecSigningGenSpec;
+	private java.security.spec.ECParameterSpec newECSigningKeyParameters;
+
 	public boolean initialize() {
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 
@@ -66,6 +73,11 @@ public final class CryptManager {
 			ecGenSpec = ECNamedCurveTable.getParameterSpec("secp256k1");
 			kpg.initialize(ecGenSpec, new SecureRandom());
 			newECKeyParameters = ((JCEECPublicKey) kpg.generateKeyPair().getPublic()).getParams();
+
+			skpg = KeyPairGenerator.getInstance("ECDSA", "BC");
+			ecSigningGenSpec = ECNamedCurveTable.getParameterSpec("secp256k1");
+			skpg.initialize(ecSigningGenSpec, new SecureRandom());
+			newECSigningKeyParameters = ((JCEECPublicKey) skpg.generateKeyPair().getPublic()).getParams();
 		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException e) {
 			LOG.log(Level.SEVERE, "No ECIES cryptography available!", e);
 			return false;
@@ -87,8 +99,31 @@ public final class CryptManager {
 	 * @return True if the signature is valid, false otherwise.
 	 */
 	public boolean checkSignature(byte[] data, byte[] signature, JCEECPublicKey publicSigningKey) {
-		// TODO Auto-generated method stub
-		return true;
+		try {
+			Signature sig = Signature.getInstance("ECDSA", "BC");
+			sig.initVerify(publicSigningKey);
+			sig.update(data);
+
+			return sig.verify(signature);
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | SignatureException | InvalidKeyException e) {
+			LOG.log(Level.SEVERE, "No ECDSA signing available.", e);
+			System.exit(1);
+			return false;
+		}
+	}
+
+	public byte[] sign(byte[] data, JCEECPrivateKey key) {
+		try {
+			Signature sig = Signature.getInstance("ECDSA", "BC");
+			sig.initSign(key, new SecureRandom());
+			sig.update(data);
+
+			return sig.sign();
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | SignatureException e) {
+			LOG.log(Level.SEVERE, "No ECDSA signing available.", e);
+			System.exit(1);
+			return null;
+		}
 	}
 
 	/**
@@ -125,7 +160,7 @@ public final class CryptManager {
 	 * @return The data encrypted with the given key.
 	 */
 	public EncryptedMessage encrypt(byte[] plain, JCEECPublicKey key) {
-		KeyPair random = generateKeyPair();
+		KeyPair random = generateEncryptionKeyPair();
 
 		ECPoint point = key.getQ().multiply(((JCEECPrivateKey) random.getPrivate()).getD());
 		byte[] tmpKey = deriveKey(point);
@@ -256,13 +291,13 @@ public final class CryptManager {
 	 * 
 	 * @return A new random ECIES key pair.
 	 */
-	public KeyPair generateKeyPair() {
+	public KeyPair generateEncryptionKeyPair() {
 		synchronized (kpg) {
 			return kpg.generateKeyPair();
 		}
 	}
 
-	public JCEECPublicKey createPublicKey(BigInteger x, BigInteger y) {
+	public JCEECPublicKey createPublicEncryptionKey(BigInteger x, BigInteger y) {
 		java.security.spec.ECPoint w = new java.security.spec.ECPoint(x, y);
 		/*
 		 * ECPoint . Fp ( ecGenSpec . getCurve ( ) , new ECFieldElement . Fp ( (
