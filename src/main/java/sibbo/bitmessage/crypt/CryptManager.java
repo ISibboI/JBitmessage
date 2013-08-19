@@ -123,10 +123,11 @@ public final class CryptManager {
 		byte[] key_m = Arrays.copyOfRange(tmpKey, 32, 64);
 
 		if (!Arrays.equals(mac, Digest.hmacSHA256(data, key_m))) {
+			LOG.log(Level.FINE, "Wrong mac");
 			return null;
 		}
 
-		byte[] plain = doAES(key_e, iv, encrypted.getData(), false);
+		byte[] plain = doAES(key_e, iv, data, false);
 
 		return new KeyDataPair(encrypted.getKey(), plain);
 	}
@@ -139,11 +140,7 @@ public final class CryptManager {
 	 * @return The data encrypted with the given key.
 	 */
 	public KeyDataPair encrypt(KeyDataPair plain) {
-		KeyPair random = null;
-
-		synchronized (kpg) {
-			random = kpg.generateKeyPair();
-		}
+		KeyPair random = generateKeyPair();
 
 		ECPoint point = ((JCEECPublicKey) plain.getKey().getPublic()).getQ().multiply(
 				((JCEECPrivateKey) random.getPrivate()).getD());
@@ -156,7 +153,7 @@ public final class CryptManager {
 		byte[] encrypted = doAES(key_e, iv, plain.getData(), true);
 		byte[] mac = Digest.hmacSHA256(encrypted, key_m);
 
-		ECPoint randomPoint = ((JCEECPublicKey) plain.getKey().getPublic()).getQ();
+		ECPoint randomPoint = ((JCEECPublicKey) random.getPublic()).getQ();
 
 		byte[] result = new byte[16 + 70 + encrypted.length + 32];
 		System.arraycopy(iv, 0, result, 0, 16);

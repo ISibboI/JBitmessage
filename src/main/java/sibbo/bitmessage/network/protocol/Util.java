@@ -86,8 +86,8 @@ public final class Util {
 	public static short getShort(byte[] b, int offset) {
 		short s = 0;
 
-		s |= (b[0] & 0xFF) << 8;
-		s |= (b[1] & 0xFF);
+		s |= (b[offset] & 0xFF) << 8;
+		s |= (b[offset + 1] & 0xFF);
 
 		return s;
 	}
