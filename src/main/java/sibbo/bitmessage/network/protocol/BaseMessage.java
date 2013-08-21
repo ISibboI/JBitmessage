@@ -37,7 +37,7 @@ public class BaseMessage {
 		COMMANDS.put(GetpubkeyMessage.COMMAND, GetpubkeyMessage.class);
 		COMMANDS.put(PubkeyMessage.COMMAND, PubkeyMessage.class);
 		COMMANDS.put(MsgMessage.COMMAND, MsgMessage.class);
-		COMMANDS.put(BroadcastMessage.COMMAND, BroadcastMessage.class);
+		COMMANDS.put(UnencryptedBroadcastMessage.COMMAND, UnencryptedBroadcastMessage.class);
 	}
 
 	/** Identifies the bitmessage protocol. */

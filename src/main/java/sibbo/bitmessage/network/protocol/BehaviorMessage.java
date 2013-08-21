@@ -12,10 +12,16 @@ import java.util.logging.Logger;
  * @version 1.0
  */
 public class BehaviorMessage extends Message {
-	private static final Logger LOG = Logger.getLogger(BehaviorMessage.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(BehaviorMessage.class.getName());
 
+	/** The node sends acknowledgments. */
 	public static final int DOES_ACK = 1;
+
+	/**
+	 * The node includes the destination ripe inside of a msg message. (Not
+	 * specified how, DON'T USE!)
+	 */
+	public static final int INCLUDE_DESTINATION = 2;
 
 	/** Storing the behavior-flags. */
 	private int bitfield;
@@ -23,7 +29,8 @@ public class BehaviorMessage extends Message {
 	/**
 	 * Creates a new behavior message with the given flags.
 	 * 
-	 * @param flags The flags.
+	 * @param flags
+	 *            The flags.
 	 */
 	public BehaviorMessage(int... flags) {
 		Objects.requireNonNull(flags, "flags must not be null.");
@@ -56,7 +63,8 @@ public class BehaviorMessage extends Message {
 	 * Returns true if all bits set in {@code flags} are also set for this
 	 * bitfield.
 	 * 
-	 * @param flags The flags to check.
+	 * @param flags
+	 *            The flags to check.
 	 * @return True if all given flags are set.
 	 */
 	public boolean isSet(int flags) {

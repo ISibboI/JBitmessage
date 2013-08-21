@@ -19,8 +19,8 @@ import sibbo.bitmessage.crypt.Digest;
  * @author Sebastian Schmidt
  * @version 1.0
  */
-public class BroadcastMessage extends POWMessage {
-	private static final Logger LOG = Logger.getLogger(BroadcastMessage.class.getName());
+public class UnencryptedBroadcastMessage extends POWMessage {
+	private static final Logger LOG = Logger.getLogger(UnencryptedBroadcastMessage.class.getName());
 
 	public static final String COMMAND = "broadcast";
 
@@ -51,7 +51,7 @@ public class BroadcastMessage extends POWMessage {
 	/** The ECDSA signature of everything that is parsed by this class. */
 	private byte[] signature;
 
-	public BroadcastMessage(long addressVersion, long stream, BehaviorMessage behavior,
+	public UnencryptedBroadcastMessage(long addressVersion, long stream, BehaviorMessage behavior,
 			JCEECPublicKey publicSigningKey, JCEECPublicKey publicEncryptionKey, MailMessage message) {
 		Objects.requireNonNull(behavior, "behavior must not be null.");
 		Objects.requireNonNull(publicSigningKey, "publicSigningKey must not be null.");
@@ -69,7 +69,7 @@ public class BroadcastMessage extends POWMessage {
 	/**
 	 * {@link Message#Message(InputBuffer)}
 	 */
-	public BroadcastMessage(InputBuffer b) throws IOException, ParsingException {
+	public UnencryptedBroadcastMessage(InputBuffer b) throws IOException, ParsingException {
 		super(b);
 	}
 
