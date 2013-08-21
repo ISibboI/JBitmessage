@@ -11,8 +11,7 @@ import java.util.logging.Logger;
  * @version 1.0
  */
 public class NodeServicesMessage extends Message {
-	private static final Logger LOG = Logger
-			.getLogger(NodeServicesMessage.class.getName());
+	private static final Logger LOG = Logger.getLogger(NodeServicesMessage.class.getName());
 
 	public static final long NODE_NETWORK = 1;
 
@@ -21,9 +20,12 @@ public class NodeServicesMessage extends Message {
 	/**
 	 * Create a new node services message with the given flags.
 	 * 
-	 * @param flags The flags.
+	 * @param flags
+	 *            The flags.
 	 */
-	public NodeServicesMessage(long... flags) {
+	public NodeServicesMessage(MessageFactory factory, long... flags) {
+		super(factory);
+
 		Objects.requireNonNull(flags, "flags must not be null.");
 
 		bitfield = 0;
@@ -34,11 +36,10 @@ public class NodeServicesMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public NodeServicesMessage(InputBuffer b) throws IOException,
-			ParsingException {
-		super(b);
+	public NodeServicesMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override
@@ -55,7 +56,8 @@ public class NodeServicesMessage extends Message {
 	 * Returns true if all bits set in {@code flags} are also set for this
 	 * bitfield.
 	 * 
-	 * @param nodeNetwork The flags to check.
+	 * @param nodeNetwork
+	 *            The flags to check.
 	 * @return True if all given flags are set.
 	 */
 	public boolean isSet(long nodeNetwork) {

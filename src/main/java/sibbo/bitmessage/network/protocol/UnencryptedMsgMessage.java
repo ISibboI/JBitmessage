@@ -17,8 +17,8 @@ import sibbo.bitmessage.crypt.CryptManager;
  * @version 1.0
  * 
  */
-public class UnencryptedMessageDataMessage extends Message {
-	private static final Logger LOG = Logger.getLogger(UnencryptedMessageDataMessage.class.getName());
+public class UnencryptedMsgMessage extends Message {
+	private static final Logger LOG = Logger.getLogger(UnencryptedMsgMessage.class.getName());
 
 	/** This class implements version 1 messages. */
 	public static final long MESSAGE_VERSION = 1;
@@ -70,9 +70,11 @@ public class UnencryptedMessageDataMessage extends Message {
 	 * @param acknowledgment
 	 *            The acknowledgment message.
 	 */
-	public UnencryptedMessageDataMessage(long addressVersion, long stream, BehaviorMessage behavior,
+	public UnencryptedMsgMessage(long addressVersion, long stream, BehaviorMessage behavior,
 			JCEECPublicKey publicSigningKey, JCEECPublicKey publicEncryptionKey, byte[] destinationRipe,
-			MailMessage message, BaseMessage acknowledgment) {
+			MailMessage message, BaseMessage acknowledgment, MessageFactory factory) {
+		super(factory);
+
 		this.addressVersion = addressVersion;
 		this.stream = stream;
 		this.behavior = behavior;
@@ -84,24 +86,24 @@ public class UnencryptedMessageDataMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public UnencryptedMessageDataMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public UnencryptedMsgMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
 		InputBuffer signed = b.getSubBuffer(0);
 
-		VariableLengthIntegerMessage messageVersion = new VariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage messageVersion = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(messageVersion.length());
 
 		if (messageVersion.getLong() != MESSAGE_VERSION) {
 			throw new ParsingException("Cannot understand messages of version: " + messageVersion);
 		}
 
-		VariableLengthIntegerMessage vAddressVersion = new VariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage vAddressVersion = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vAddressVersion.length());
 		addressVersion = vAddressVersion.getLong();
 
@@ -109,11 +111,11 @@ public class UnencryptedMessageDataMessage extends Message {
 			throw new ParsingException("Unknown address version: " + addressVersion);
 		}
 
-		VariableLengthIntegerMessage vStream = new VariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage vStream = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vStream.length());
 		stream = vStream.getLong();
 
-		behavior = new BehaviorMessage(b);
+		behavior = getMessageFactory().createBehaviorMessage(b);
 		b = b.getSubBuffer(behavior.length());
 
 		publicSigningKey = Util.getPublicKey(b.get(0, 64));
@@ -123,10 +125,10 @@ public class UnencryptedMessageDataMessage extends Message {
 		destinationRipe = b.get(84, 64);
 		b = b.getSubBuffer(148);
 
-		message = new MailMessage(b);
+		message = getMessageFactory().createMailMessage(b);
 		b = b.getSubBuffer(message.length());
 
-		VariableLengthIntegerMessage vLength = new VariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage vLength = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vLength.length());
 		long length = vLength.getLong();
 
@@ -134,10 +136,11 @@ public class UnencryptedMessageDataMessage extends Message {
 			throw new ParsingException("The acknowlegment data is too long: " + length);
 		}
 
-		this.acknowledgment = new BaseMessage(new InputBufferInputStream(b.getSubBuffer(0, (int) length)), (int) length);
+		this.acknowledgment = getMessageFactory().createBaseMessage(
+				new InputBufferInputStream(b.getSubBuffer(0, (int) length)), (int) length);
 		b = b.getSubBuffer((int) length);
 
-		vLength = new VariableLengthIntegerMessage(b);
+		vLength = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vLength.length());
 		length = vLength.getLong();
 
@@ -157,9 +160,9 @@ public class UnencryptedMessageDataMessage extends Message {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
 		try {
-			b.write(new VariableLengthIntegerMessage(MESSAGE_VERSION).getBytes());
-			b.write(new VariableLengthIntegerMessage(addressVersion).getBytes());
-			b.write(new VariableLengthIntegerMessage(stream).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(MESSAGE_VERSION).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(addressVersion).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(stream).getBytes());
 			b.write(behavior.getBytes());
 			b.write(Util.getBytes(publicSigningKey));
 			b.write(Util.getBytes(publicEncryptionKey));
@@ -167,7 +170,7 @@ public class UnencryptedMessageDataMessage extends Message {
 			b.write(message.getBytes());
 
 			byte[] ack = acknowledgment.getBytes();
-			b.write(new VariableLengthIntegerMessage(ack.length).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(ack.length).getBytes());
 			b.write(ack);
 		} catch (IOException e) {
 			LOG.log(Level.SEVERE, "Could not write bytes!", e);
@@ -183,7 +186,7 @@ public class UnencryptedMessageDataMessage extends Message {
 
 		try {
 			b.write(getBytesWithoutSignature());
-			b.write(new VariableLengthIntegerMessage(signature.length).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(signature.length).getBytes());
 			b.write(signature);
 		} catch (IOException e) {
 			LOG.log(Level.SEVERE, "Could not write bytes!", e);

@@ -16,8 +16,7 @@ import java.util.logging.Logger;
  * @version 1.0
  */
 public class NetworkAddressMessage extends Message {
-	private static final Logger LOG = Logger
-			.getLogger(NetworkAddressMessage.class.getName());
+	private static final Logger LOG = Logger.getLogger(NetworkAddressMessage.class.getName());
 
 	/** Timestamp describing when the node with this address was last seen. */
 	private int time;
@@ -37,14 +36,21 @@ public class NetworkAddressMessage extends Message {
 	/**
 	 * Creates a new network address message describing a node.
 	 * 
-	 * @param time The time the node was last seen.
-	 * @param stream The stream the node belongs to.
-	 * @param services The services the node has enabled.
-	 * @param ip The ip of the node.
-	 * @param port The port of the node.
+	 * @param time
+	 *            The time the node was last seen.
+	 * @param stream
+	 *            The stream the node belongs to.
+	 * @param services
+	 *            The services the node has enabled.
+	 * @param ip
+	 *            The ip of the node.
+	 * @param port
+	 *            The port of the node.
 	 */
-	public NetworkAddressMessage(int time, int stream,
-			NodeServicesMessage services, InetAddress ip, int port) {
+	public NetworkAddressMessage(int time, int stream, NodeServicesMessage services, InetAddress ip, int port,
+			MessageFactory factory) {
+		super(factory);
+
 		Objects.requireNonNull(ip, "ip must not be null!");
 
 		if (stream == 0) {
@@ -52,13 +58,11 @@ public class NetworkAddressMessage extends Message {
 		}
 
 		if (port < 1 || port > 65535) {
-			throw new IllegalArgumentException(
-					"port must not be in range 1 - 65535");
+			throw new IllegalArgumentException("port must not be in range 1 - 65535");
 		}
 
 		if (!services.isSet(NodeServicesMessage.NODE_NETWORK)) {
-			throw new IllegalArgumentException(
-					"A node must have the NODE_NETWORK service enabled!");
+			throw new IllegalArgumentException("A node must have the NODE_NETWORK service enabled!");
 		}
 
 		this.time = time;
@@ -69,11 +73,10 @@ public class NetworkAddressMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public NetworkAddressMessage(InputBuffer b) throws IOException,
-			ParsingException {
-		super(b);
+	public NetworkAddressMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override
@@ -82,15 +85,14 @@ public class NetworkAddressMessage extends Message {
 		stream = Util.getInt(b.get(4, 4));
 		b = b.getSubBuffer(8);
 
-		services = new NodeServicesMessage(b);
+		services = getMessageFactory().createNodeServicesMessage(b);
 		b = b.getSubBuffer(services.length());
 
 		byte[] ipBytes = b.get(0, 16);
 
 		try {
 			if (isIpv4(ipBytes)) {
-				ip = InetAddress.getByAddress(Arrays.copyOfRange(ipBytes, 12,
-						16));
+				ip = InetAddress.getByAddress(Arrays.copyOfRange(ipBytes, 12, 16));
 			} else {
 				ip = InetAddress.getByAddress(ipBytes);
 			}
@@ -172,7 +174,8 @@ public class NetworkAddressMessage extends Message {
 	 * Returns true if the given 16 byte ip-address is an IPv4 address, false if
 	 * it is an IPv6 address.
 	 * 
-	 * @param ip An IPv6 address or v6 mapped v4 address.
+	 * @param ip
+	 *            An IPv6 address or v6 mapped v4 address.
 	 * @return True if the given 16 byte ip-address is an IPv4 address, false if
 	 *         it is an IPv6 address.
 	 */
@@ -203,8 +206,7 @@ public class NetworkAddressMessage extends Message {
 		if (ip.getAddress().length == 4) {
 			return Util.getInt(ip.getAddress()) + port;
 		} else {
-			return Util.getInt(Arrays.copyOfRange(ip.getAddress(), 12, 16))
-					+ port;
+			return Util.getInt(Arrays.copyOfRange(ip.getAddress(), 12, 16)) + port;
 		}
 	}
 

@@ -52,7 +52,10 @@ public class UnencryptedBroadcastMessage extends POWMessage {
 	private byte[] signature;
 
 	public UnencryptedBroadcastMessage(long addressVersion, long stream, BehaviorMessage behavior,
-			JCEECPublicKey publicSigningKey, JCEECPublicKey publicEncryptionKey, MailMessage message) {
+			JCEECPublicKey publicSigningKey, JCEECPublicKey publicEncryptionKey, MailMessage message,
+			MessageFactory factory) {
+		super(factory);
+
 		Objects.requireNonNull(behavior, "behavior must not be null.");
 		Objects.requireNonNull(publicSigningKey, "publicSigningKey must not be null.");
 		Objects.requireNonNull(publicEncryptionKey, "publicEncryptionKey must not be null.");
@@ -67,10 +70,10 @@ public class UnencryptedBroadcastMessage extends POWMessage {
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public UnencryptedBroadcastMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public UnencryptedBroadcastMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	public long getAddressVersion() {
@@ -109,22 +112,22 @@ public class UnencryptedBroadcastMessage extends POWMessage {
 	protected void readPayload(InputBuffer b) throws IOException, ParsingException {
 		InputBuffer signed = b.getSubBuffer(0);
 
-		VariableLengthIntegerMessage v = new VariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage v = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 
 		if (BROADCAST_VERSION != v.getLong()) {
 			throw new ParsingException("Unknown broadcast message version: " + v.getLong());
 		}
 
-		v = new VariableLengthIntegerMessage(b);
+		v = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		addressVersion = v.getLong();
 
-		v = new VariableLengthIntegerMessage(b);
+		v = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		stream = v.getLong();
 
-		behavior = new BehaviorMessage(b);
+		behavior = getMessageFactory().createBehaviorMessage(b);
 		b = b.getSubBuffer(behavior.length());
 
 		publicSigningKey = Util.getPublicKey(b.get(0, 64));
@@ -136,10 +139,10 @@ public class UnencryptedBroadcastMessage extends POWMessage {
 			throw new ParsingException("The hash of the public keys is incorrect.");
 		}
 
-		message = new MailMessage(b);
+		message = getMessageFactory().createMailMessage(b);
 		b = b.getSubBuffer(message.length());
 
-		v = new VariableLengthIntegerMessage(b);
+		v = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		long length = v.getLong();
 
@@ -160,15 +163,15 @@ public class UnencryptedBroadcastMessage extends POWMessage {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
 		try {
-			b.write(new VariableLengthIntegerMessage(BROADCAST_VERSION).getBytes());
-			b.write(new VariableLengthIntegerMessage(addressVersion).getBytes());
-			b.write(new VariableLengthIntegerMessage(stream).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(BROADCAST_VERSION).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(addressVersion).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(stream).getBytes());
 			b.write(behavior.getBytes());
 			b.write(Util.getBytes(publicSigningKey));
 			b.write(Util.getBytes(publicEncryptionKey));
 			b.write(ripe);
 			b.write(message.getBytes());
-			b.write(new VariableLengthIntegerMessage(signature.length).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(signature.length).getBytes());
 			b.write(signature);
 		} catch (IOException e) {
 			LOG.log(Level.SEVERE, "Could not write bytes!", e);

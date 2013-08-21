@@ -18,7 +18,7 @@ import sibbo.bitmessage.crypt.CryptManager;
 import sibbo.bitmessage.network.protocol.InputBuffer;
 import sibbo.bitmessage.network.protocol.MsgMessage;
 import sibbo.bitmessage.network.protocol.ParsingException;
-import sibbo.bitmessage.network.protocol.UnencryptedMessageDataMessage;
+import sibbo.bitmessage.network.protocol.UnencryptedMsgMessage;
 
 /**
  * Tries to decrypt messages.
@@ -82,7 +82,7 @@ public class ObjectParser implements Runnable {
 
 				if (result != null) {
 					try {
-						UnencryptedMessageDataMessage u = new UnencryptedMessageDataMessage(new InputBuffer(
+						UnencryptedMsgMessage u = new UnencryptedMsgMessage(new InputBuffer(
 								new ByteArrayInputStream(result), result.length, result.length));
 
 						if (!Arrays.equals(u.getDestinationRipe(), addr.getRipe())) {
@@ -101,7 +101,7 @@ public class ObjectParser implements Runnable {
 		}
 	}
 
-	private void fireMessageReceived(UnencryptedMessageDataMessage u) {
+	private void fireMessageReceived(UnencryptedMsgMessage u) {
 		for (MessageListener l : listeners) {
 			l.messageReceived(u);
 		}

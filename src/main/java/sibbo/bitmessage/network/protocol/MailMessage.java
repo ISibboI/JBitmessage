@@ -3,7 +3,6 @@ package sibbo.bitmessage.network.protocol;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -14,8 +13,7 @@ import java.util.logging.Logger;
  * @version 1.0
  */
 public class MailMessage extends Message {
-	private static final Logger LOG = Logger.getLogger(MailMessage.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(MailMessage.class.getName());
 
 	/** The encoding of this mail. */
 	private MessageEncoding encoding;
@@ -32,8 +30,9 @@ public class MailMessage extends Message {
 	/** The content of a message. Is not used by all encodings. */
 	private String content;
 
-	private MailMessage(MessageEncoding encoding, byte[] data, String subject,
-			String content) {
+	public MailMessage(MessageEncoding encoding, byte[] data, String subject, String content, MessageFactory factory) {
+		super(factory);
+
 		this.encoding = encoding;
 
 		this.data = data;
@@ -42,49 +41,10 @@ public class MailMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public MailMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
-	}
-
-	/**
-	 * Returns a new IGNORE message. The given data is probably ignored by the
-	 * receiver.
-	 * 
-	 * @param data Probably ignored by the receiver.
-	 * @return A new ignore message.
-	 */
-	public static MailMessage getIgnoreMessage(byte[] data) {
-		Objects.requireNonNull(data, "data must not be null.");
-
-		return new MailMessage(MessageEncoding.IGNORE, data, null, null);
-	}
-
-	/**
-	 * Returns a new TRIVIAL message.
-	 * 
-	 * @param content The message text.
-	 * @return A new trivial message.
-	 */
-	public static MailMessage getTrivialMessage(String content) {
-		Objects.requireNonNull(content, "content must not be null.");
-
-		return new MailMessage(MessageEncoding.IGNORE, null, null, content);
-	}
-
-	/**
-	 * Returns a new SIMPLE message.
-	 * 
-	 * @param subject The message subject.
-	 * @param content The message text.
-	 * @return A new simple message.
-	 */
-	public static MailMessage getSimpleMessage(String subject, String content) {
-		Objects.requireNonNull(subject, "subject must not be null.");
-		Objects.requireNonNull(content, "content must not be null.");
-
-		return new MailMessage(MessageEncoding.IGNORE, null, subject, content);
+	public MailMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	public MessageEncoding getEncoding() {
@@ -105,11 +65,11 @@ public class MailMessage extends Message {
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
-		VariableLengthIntegerMessage i = new VariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage i = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(i.length());
 		encoding = MessageEncoding.getEncoding(i.getLong());
 
-		i = new VariableLengthIntegerMessage(b);
+		i = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(i.length());
 		long length = i.getLong();
 
@@ -120,23 +80,23 @@ public class MailMessage extends Message {
 		data = b.get(0, (int) length);
 
 		switch (encoding) {
-			case IGNORE:
-				break;
+		case IGNORE:
+			break;
 
-			case TRIVIAL:
-				content = new String(data, "UTF-8");
-				break;
+		case TRIVIAL:
+			content = new String(data, "UTF-8");
+			break;
 
-			case SIMPLE:
-				String s = new String(data, "UTF-8").substring(8);
-				int index = s.indexOf("\nBody:");
+		case SIMPLE:
+			String s = new String(data, "UTF-8").substring(8);
+			int index = s.indexOf("\nBody:");
 
-				subject = s.substring(0, index);
-				content = s.substring(index + 6);
-				break;
+			subject = s.substring(0, index);
+			content = s.substring(index + 6);
+			break;
 
-			default:
-				throw new ParsingException("Unknown encoding: " + encoding);
+		default:
+			throw new ParsingException("Unknown encoding: " + encoding);
 		}
 	}
 
@@ -145,28 +105,26 @@ public class MailMessage extends Message {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
 		try {
-			b.write(new VariableLengthIntegerMessage(encoding.getConstant())
-					.getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(encoding.getConstant()).getBytes());
 
 			switch (encoding) {
-				case IGNORE:
-					break;
+			case IGNORE:
+				break;
 
-				case TRIVIAL:
-					data = content.getBytes("UTF-8");
-					break;
+			case TRIVIAL:
+				data = content.getBytes("UTF-8");
+				break;
 
-				case SIMPLE:
-					data = ("Subject:" + subject + "\nBody:" + content)
-							.getBytes();
-					break;
+			case SIMPLE:
+				data = ("Subject:" + subject + "\nBody:" + content).getBytes();
+				break;
 
-				default:
-					LOG.log(Level.SEVERE, "Unknown encoding: " + encoding);
-					System.exit(1);
+			default:
+				LOG.log(Level.SEVERE, "Unknown encoding: " + encoding);
+				System.exit(1);
 			}
 
-			b.write(new VariableLengthIntegerMessage(data.length).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(data.length).getBytes());
 			b.write(data);
 		} catch (UnsupportedEncodingException e) {
 			LOG.log(Level.SEVERE, "UTF-8 not supported!", e);
@@ -180,9 +138,7 @@ public class MailMessage extends Message {
 	}
 
 	public int length() {
-		return new VariableLengthIntegerMessage(encoding.getConstant())
-				.length()
-				+ new VariableLengthIntegerMessage(data.length).length()
-				+ data.length;
+		return getMessageFactory().createVariableLengthIntegerMessage(encoding.getConstant()).length()
+				+ getMessageFactory().createVariableLengthIntegerMessage(data.length).length() + data.length;
 	}
 }

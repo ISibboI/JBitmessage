@@ -30,7 +30,9 @@ public class MsgMessage extends POWMessage {
 	 * @param stream
 	 * @param encrypted
 	 */
-	public MsgMessage(long stream, EncryptedMessage encrypted) {
+	public MsgMessage(long stream, EncryptedMessage encrypted, MessageFactory factory) {
+		super(factory);
+
 		Objects.requireNonNull(encrypted);
 
 		if (stream == 0) {
@@ -42,10 +44,10 @@ public class MsgMessage extends POWMessage {
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public MsgMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public MsgMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	public long getStream() {
@@ -58,11 +60,11 @@ public class MsgMessage extends POWMessage {
 
 	@Override
 	protected void readPayload(InputBuffer b) throws IOException, ParsingException {
-		VariableLengthIntegerMessage v = new VariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage v = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		stream = v.getLong();
 
-		encrypted = new EncryptedMessage(b);
+		encrypted = getMessageFactory().createEncryptedMessage(b);
 	}
 
 	@Override
@@ -70,7 +72,7 @@ public class MsgMessage extends POWMessage {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
 		try {
-			b.write(new VariableLengthIntegerMessage(stream).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(stream).getBytes());
 			b.write(encrypted.getBytes());
 		} catch (IOException e) {
 			LOG.log(Level.SEVERE, "Could not write bytes!", e);

@@ -15,8 +15,7 @@ import java.util.logging.Logger;
  * 
  */
 public class VariableLengthStringMessage extends Message {
-	private static final Logger LOG = Logger
-			.getLogger(VariableLengthStringMessage.class.getName());
+	private static final Logger LOG = Logger.getLogger(VariableLengthStringMessage.class.getName());
 
 	private static final int MAX_LENGTH = 50_000;
 
@@ -26,15 +25,17 @@ public class VariableLengthStringMessage extends Message {
 	/**
 	 * Creates a new variable length string message with the given string.
 	 * 
-	 * @param message The string.
+	 * @param message
+	 *            The string.
 	 */
-	public VariableLengthStringMessage(String message) {
+	public VariableLengthStringMessage(String message, MessageFactory factory) {
+		super(factory);
+
 		Objects.requireNonNull(message, "message must not be null.");
 
 		try {
 			if (message.getBytes("UTF-8").length > MAX_LENGTH) {
-				throw new IllegalArgumentException(
-						"String is too long. Maximum length is " + MAX_LENGTH);
+				throw new IllegalArgumentException("String is too long. Maximum length is " + MAX_LENGTH);
 			}
 		} catch (UnsupportedEncodingException e) {
 			LOG.log(Level.SEVERE, "UTF-8 not supported!", e);
@@ -45,23 +46,20 @@ public class VariableLengthStringMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer,MessageFactory)}
 	 */
-	public VariableLengthStringMessage(InputBuffer b) throws IOException,
-			ParsingException {
-		super(b);
+	public VariableLengthStringMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
-		VariableLengthIntegerMessage vLength = new VariableLengthIntegerMessage(
-				b);
+		VariableLengthIntegerMessage vLength = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vLength.length());
 		long length = vLength.getLong();
 
 		if (length > MAX_LENGTH || length < 0) {
-			throw new ParsingException("String is too long. Maximum length is "
-					+ MAX_LENGTH);
+			throw new ParsingException("String is too long. Maximum length is " + MAX_LENGTH);
 		}
 
 		byte[] bytes = b.get(0, (int) length);
@@ -81,7 +79,7 @@ public class VariableLengthStringMessage extends Message {
 		try {
 			byte[] bytes = message.getBytes("UTF-8");
 
-			b.write(new VariableLengthIntegerMessage(bytes.length).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(bytes.length).getBytes());
 			b.write(bytes);
 		} catch (UnsupportedEncodingException e) {
 			LOG.log(Level.SEVERE, "UTF-8 not supported!", e);
@@ -102,8 +100,7 @@ public class VariableLengthStringMessage extends Message {
 		try {
 			byte[] bytes = message.getBytes("UTF-8");
 
-			return new VariableLengthIntegerMessage(bytes.length).length()
-					+ bytes.length;
+			return getMessageFactory().createVariableLengthIntegerMessage(bytes.length).length() + bytes.length;
 		} catch (UnsupportedEncodingException e) {
 			LOG.log(Level.SEVERE, "UTF-8 not supported!", e);
 			System.exit(1);

@@ -1,6 +1,6 @@
 package sibbo.bitmessage.network;
 
-import sibbo.bitmessage.network.protocol.UnencryptedMessageDataMessage;
+import sibbo.bitmessage.network.protocol.UnencryptedMsgMessage;
 
 public interface MessageListener {
 	/**
@@ -8,5 +8,5 @@ public interface MessageListener {
 	 * 
 	 * @param m The message.
 	 */
-	void messageReceived(UnencryptedMessageDataMessage m);
+	void messageReceived(UnencryptedMsgMessage m);
 }

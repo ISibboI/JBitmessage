@@ -18,8 +18,7 @@ import sibbo.bitmessage.Options;
  * @version 1.0
  */
 public class InvMessage extends P2PMessage {
-	private static final Logger LOG = Logger.getLogger(InvMessage.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(InvMessage.class.getName());
 
 	/** The command string for this message type. */
 	public static final String COMMAND = "inv";
@@ -30,14 +29,16 @@ public class InvMessage extends P2PMessage {
 	/**
 	 * Creates a new inv message with the given inventory vectors.
 	 * 
-	 * @param inv The inventory vectors.
+	 * @param inv
+	 *            The inventory vectors.
 	 */
-	public InvMessage(Collection<? extends InventoryVectorMessage> inv) {
+	public InvMessage(Collection<? extends InventoryVectorMessage> inv, MessageFactory factory) {
+		super(factory);
+
 		Objects.requireNonNull(inv, "inv must not be null.");
 
 		if (inv.size() > Options.getInstance().getInt("protocol.maxInvLength")) {
-			throw new IllegalArgumentException("Too much inventory vectors: "
-					+ inv.size());
+			throw new IllegalArgumentException("Too much inventory vectors: " + inv.size());
 		}
 
 		this.inv = new ArrayList<>(inv);
@@ -46,8 +47,8 @@ public class InvMessage extends P2PMessage {
 	/**
 	 * @link {@link Message#Message(InputBuffer)}
 	 */
-	public InvMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public InvMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override
@@ -57,21 +58,18 @@ public class InvMessage extends P2PMessage {
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
-		VariableLengthIntegerMessage vLength = new VariableLengthIntegerMessage(
-				b);
+		VariableLengthIntegerMessage vLength = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vLength.length());
 		long length = vLength.getLong();
 
-		if (length < 0
-				|| length > Options.getInstance().getInt(
-						"protocol.maxInvLength")) {
+		if (length < 0 || length > Options.getInstance().getInt("protocol.maxInvLength")) {
 			throw new ParsingException("Too much inventory vectors: " + length);
 		}
 
 		inv = new ArrayList<>((int) length);
 
 		for (int i = 0; i < length; i++) {
-			InventoryVectorMessage ivm = new InventoryVectorMessage(b);
+			InventoryVectorMessage ivm = getMessageFactory().createInventoryVectorMessage(b);
 			inv.add(ivm);
 			b = b.getSubBuffer(ivm.length());
 		}
@@ -82,7 +80,7 @@ public class InvMessage extends P2PMessage {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
 		try {
-			b.write(new VariableLengthIntegerMessage(inv.size()).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(inv.size()).getBytes());
 
 			for (InventoryVectorMessage m : inv) {
 				b.write(m.getBytes());

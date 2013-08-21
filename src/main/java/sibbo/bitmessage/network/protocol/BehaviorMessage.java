@@ -32,7 +32,9 @@ public class BehaviorMessage extends Message {
 	 * @param flags
 	 *            The flags.
 	 */
-	public BehaviorMessage(int... flags) {
+	public BehaviorMessage(MessageFactory factory, int... flags) {
+		super(factory);
+
 		Objects.requireNonNull(flags, "flags must not be null.");
 
 		bitfield = 0;
@@ -43,10 +45,10 @@ public class BehaviorMessage extends Message {
 	}
 
 	/**
-	 * @link {@link Message#Message(InputBuffer)}
+	 * @link {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public BehaviorMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public BehaviorMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override

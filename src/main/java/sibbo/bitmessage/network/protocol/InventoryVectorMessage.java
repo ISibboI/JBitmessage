@@ -12,8 +12,7 @@ import java.util.logging.Logger;
  * @version 1.0
  */
 public class InventoryVectorMessage extends Message {
-	private static final Logger LOG = Logger
-			.getLogger(InventoryVectorMessage.class.getName());
+	private static final Logger LOG = Logger.getLogger(InventoryVectorMessage.class.getName());
 
 	/** The hash */
 	private byte[] hash; // 32
@@ -21,9 +20,12 @@ public class InventoryVectorMessage extends Message {
 	/**
 	 * Creates a new inventory vector message.
 	 * 
-	 * @param o The hash.
+	 * @param o
+	 *            The hash.
 	 */
-	public InventoryVectorMessage(byte[] hash) {
+	public InventoryVectorMessage(byte[] hash, MessageFactory factory) {
+		super(factory);
+
 		Objects.requireNonNull(hash, "o must not be null!");
 
 		if (hash.length != 32) {
@@ -34,11 +36,10 @@ public class InventoryVectorMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public InventoryVectorMessage(InputBuffer b) throws IOException,
-			ParsingException {
-		super(b);
+	public InventoryVectorMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	public byte[] getHash() {

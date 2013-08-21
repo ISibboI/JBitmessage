@@ -13,8 +13,7 @@ import java.util.logging.Logger;
  * @version 1.0
  */
 public class VariableLengthIntegerListMessage extends Message {
-	private static final Logger LOG = Logger
-			.getLogger(VariableLengthIntegerListMessage.class.getName());
+	private static final Logger LOG = Logger.getLogger(VariableLengthIntegerListMessage.class.getName());
 
 	private static final int MAX_LENGTH = 50_000;
 
@@ -25,32 +24,31 @@ public class VariableLengthIntegerListMessage extends Message {
 	 * Creates a new variable length integer list message with the given
 	 * content.
 	 * 
-	 * @param ints The numbers to store. Must not be longer than 50,000.
+	 * @param ints
+	 *            The numbers to store. Must not be longer than 50,000.
 	 */
-	public VariableLengthIntegerListMessage(long[] ints) {
+	public VariableLengthIntegerListMessage(long[] ints, MessageFactory factory) {
+		super(factory);
+
 		Objects.requireNonNull(ints, "ints must not be null.");
 
 		if (ints.length > MAX_LENGTH) {
-			throw new IllegalArgumentException(
-					"The maximum length for a variable length integer list is 50,000");
+			throw new IllegalArgumentException("The maximum length for a variable length integer list is 50,000");
 		}
 
 		this.ints = ints;
-
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public VariableLengthIntegerListMessage(InputBuffer b) throws IOException,
-			ParsingException {
-		super(b);
+	public VariableLengthIntegerListMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
-		VariableLengthIntegerMessage length = new VariableLengthIntegerMessage(
-				b);
+		VariableLengthIntegerMessage length = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(length.length());
 		long l = length.getLong();
 
@@ -61,7 +59,7 @@ public class VariableLengthIntegerListMessage extends Message {
 		ints = new long[(int) l];
 
 		for (int i = 0; i < l; i++) {
-			VariableLengthIntegerMessage v = new VariableLengthIntegerMessage(b);
+			VariableLengthIntegerMessage v = getMessageFactory().createVariableLengthIntegerMessage(b);
 			b = b.getSubBuffer(v.length());
 			ints[i] = v.getLong();
 		}
@@ -69,13 +67,12 @@ public class VariableLengthIntegerListMessage extends Message {
 
 	@Override
 	public byte[] getBytes() {
-		VariableLengthIntegerMessage length = new VariableLengthIntegerMessage(
-				ints.length);
+		VariableLengthIntegerMessage length = getMessageFactory().createVariableLengthIntegerMessage(ints.length);
 
 		VariableLengthIntegerMessage[] varInts = new VariableLengthIntegerMessage[ints.length];
 
 		for (int i = 0; i < ints.length; i++) {
-			varInts[i] = new VariableLengthIntegerMessage(ints[i]);
+			varInts[i] = getMessageFactory().createVariableLengthIntegerMessage(ints[i]);
 		}
 
 		ByteArrayOutputStream b = new ByteArrayOutputStream();

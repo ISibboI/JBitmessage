@@ -38,7 +38,9 @@ public class EncryptedMessage extends Message {
 	 * @param mac
 	 *            The message authentication code. Must have a length of 32.
 	 */
-	public EncryptedMessage(byte[] iv, JCEECPublicKey publicKey, byte[] encrypted, byte[] mac) {
+	public EncryptedMessage(byte[] iv, JCEECPublicKey publicKey, byte[] encrypted, byte[] mac, MessageFactory factory) {
+		super(factory);
+
 		Objects.requireNonNull(iv, "'iv' must not be null.");
 		Objects.requireNonNull(publicKey, "'publicKey' must not be null.");
 		Objects.requireNonNull(encrypted, "'encrypted' must not be null.");
@@ -63,10 +65,10 @@ public class EncryptedMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public EncryptedMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public EncryptedMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override

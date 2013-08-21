@@ -11,8 +11,7 @@ import java.util.logging.Logger;
  * 
  */
 public class VariableLengthIntegerMessage extends Message {
-	private static final Logger LOG = Logger
-			.getLogger(VariableLengthIntegerMessage.class.getName());
+	private static final Logger LOG = Logger.getLogger(VariableLengthIntegerMessage.class.getName());
 
 	/** Contains the variable length integer. */
 	private long n;
@@ -22,18 +21,20 @@ public class VariableLengthIntegerMessage extends Message {
 	 * The length of the sent number is dependent on the height of the number.
 	 * Longs are treated as uint64.
 	 * 
-	 * @param n The number to transmit.
+	 * @param n
+	 *            The number to transmit.
 	 */
-	public VariableLengthIntegerMessage(long n) {
+	public VariableLengthIntegerMessage(long n, MessageFactory factory) {
+		super(factory);
+
 		this.n = n;
 	}
 
 	/**
 	 * {@link Message#Message(InputBuffer)}
 	 */
-	public VariableLengthIntegerMessage(InputBuffer b) throws IOException,
-			ParsingException {
-		super(b);
+	public VariableLengthIntegerMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override
@@ -73,8 +74,7 @@ public class VariableLengthIntegerMessage extends Message {
 		} else if (n < 0xffff_ffffL && n >= 0) {
 			varInt = new byte[] { (byte) 0xfe, b[4], b[5], b[6], b[7] };
 		} else {
-			varInt = new byte[] { (byte) 0xff, b[0], b[1], b[2], b[3], b[4],
-					b[5], b[6], b[7] };
+			varInt = new byte[] { (byte) 0xff, b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7] };
 		}
 
 		return varInt;

@@ -13,14 +13,18 @@ public abstract class P2PMessage extends Message {
 	/** The command string for this message type. */
 	public static final String COMMAND = null;
 
-	public P2PMessage() {
+	/**
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
+	 */
+	public P2PMessage(MessageFactory factory) {
+		super(factory);
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public P2PMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public P2PMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	/**

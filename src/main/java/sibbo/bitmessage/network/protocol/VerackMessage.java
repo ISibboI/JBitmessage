@@ -11,8 +11,7 @@ import java.util.logging.Logger;
  * 
  */
 public class VerackMessage extends P2PMessage {
-	private static final Logger LOG = Logger.getLogger(VerackMessage.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(VerackMessage.class.getName());
 
 	/** The command string for this message type. */
 	public static final String COMMAND = "verack";
@@ -20,14 +19,15 @@ public class VerackMessage extends P2PMessage {
 	/**
 	 * Creates a new verify and acknowledged message.
 	 */
-	public VerackMessage() {
+	public VerackMessage(MessageFactory factory) {
+		super(factory);
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public VerackMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public VerackMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override

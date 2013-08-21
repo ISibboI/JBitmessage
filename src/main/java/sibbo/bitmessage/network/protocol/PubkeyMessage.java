@@ -13,8 +13,7 @@ import java.util.logging.Logger;
  * @version 1.0
  */
 public class PubkeyMessage extends POWMessage {
-	private static final Logger LOG = Logger.getLogger(PubkeyMessage.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(PubkeyMessage.class.getName());
 
 	/** The command string for this message type. */
 	public static final String COMMAND = "pubkey";
@@ -37,20 +36,24 @@ public class PubkeyMessage extends POWMessage {
 	/**
 	 * Creates a new pubkey message.
 	 * 
-	 * @param addressVersion The version of the public key.
-	 * @param stream The stream of the public key.
-	 * @param behavior The behavior of the node that uses this public key.
-	 * @param publicSigningKey The public signing key.
-	 * @param publicEncryptionKey The public encryption key.
+	 * @param addressVersion
+	 *            The version of the public key.
+	 * @param stream
+	 *            The stream of the public key.
+	 * @param behavior
+	 *            The behavior of the node that uses this public key.
+	 * @param publicSigningKey
+	 *            The public signing key.
+	 * @param publicEncryptionKey
+	 *            The public encryption key.
 	 */
-	public PubkeyMessage(long addressVersion, long stream,
-			BehaviorMessage behavior, byte[] publicSigningKey,
-			byte[] publicEncryptionKey) {
+	public PubkeyMessage(long addressVersion, long stream, BehaviorMessage behavior, byte[] publicSigningKey,
+			byte[] publicEncryptionKey, MessageFactory factory) {
+		super(factory);
+
 		Objects.requireNonNull(behavior, "behavior must not be null.");
-		Objects.requireNonNull(publicSigningKey,
-				"publicSigningKey must not be null.");
-		Objects.requireNonNull(publicEncryptionKey,
-				"publicEncryptionKey must not be null.");
+		Objects.requireNonNull(publicSigningKey, "publicSigningKey must not be null.");
+		Objects.requireNonNull(publicEncryptionKey, "publicEncryptionKey must not be null.");
 
 		if (stream == 0) {
 			throw new IllegalArgumentException("stream must not be 0.");
@@ -64,10 +67,10 @@ public class PubkeyMessage extends POWMessage {
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public PubkeyMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public PubkeyMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	public long getAddressVersion() {
@@ -91,17 +94,16 @@ public class PubkeyMessage extends POWMessage {
 	}
 
 	@Override
-	protected void readPayload(InputBuffer b) throws IOException,
-			ParsingException {
-		VariableLengthIntegerMessage v = new VariableLengthIntegerMessage(b);
+	protected void readPayload(InputBuffer b) throws IOException, ParsingException {
+		VariableLengthIntegerMessage v = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		addressVersion = v.getLong();
 
-		v = new VariableLengthIntegerMessage(b);
+		v = getMessageFactory().createVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		stream = v.getLong();
 
-		behavior = new BehaviorMessage(b);
+		behavior = getMessageFactory().createBehaviorMessage(b);
 		b = b.getSubBuffer(behavior.length());
 
 		publicSigningKey = b.get(0, 64);
@@ -113,8 +115,8 @@ public class PubkeyMessage extends POWMessage {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
 		try {
-			b.write(new VariableLengthIntegerMessage(addressVersion).getBytes());
-			b.write(new VariableLengthIntegerMessage(stream).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(addressVersion).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(stream).getBytes());
 			b.write(behavior.getBytes());
 			b.write(publicSigningKey);
 			b.write(publicEncryptionKey);
