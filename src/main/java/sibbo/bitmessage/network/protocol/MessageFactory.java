@@ -1,5 +1,7 @@
 package sibbo.bitmessage.network.protocol;
 
+import java.io.IOException;
+
 public interface MessageFactory {
 
 	InventoryVectorMessage createInventoryVectorMessage(InputBuffer b);
@@ -32,4 +34,5 @@ public interface MessageFactory {
 
 	BaseMessage createBaseMessage(InputBufferInputStream inputBufferInputStream, int length);
 
+	P2PMessage createP2PMessage(String command, InputBuffer buffer) throws ParsingException, IOException;
 }

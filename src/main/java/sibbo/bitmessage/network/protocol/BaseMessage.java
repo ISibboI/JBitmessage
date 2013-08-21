@@ -4,10 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -23,21 +20,6 @@ import sibbo.bitmessage.crypt.Digest;
  */
 public class BaseMessage {
 	private static final Logger LOG = Logger.getLogger(BaseMessage.class.getName());
-
-	/** Stores the types that are used to parse the commands */
-	private static final HashMap<String, Class<? extends P2PMessage>> COMMANDS = new HashMap<>();
-
-	static {
-		COMMANDS.put(VersionMessage.COMMAND, VersionMessage.class);
-		COMMANDS.put(VerackMessage.COMMAND, VerackMessage.class);
-		COMMANDS.put(AddrMessage.COMMAND, AddrMessage.class);
-		COMMANDS.put(InvMessage.COMMAND, InvMessage.class);
-		COMMANDS.put(GetdataMessage.COMMAND, GetdataMessage.class);
-		COMMANDS.put(GetpubkeyMessage.COMMAND, GetpubkeyMessage.class);
-		COMMANDS.put(PubkeyMessage.COMMAND, PubkeyMessage.class);
-		COMMANDS.put(MsgMessage.COMMAND, MsgMessage.class);
-		COMMANDS.put(UnencryptedBroadcastMessage.COMMAND, UnencryptedBroadcastMessage.class);
-	}
 
 	/** Identifies the bitmessage protocol. */
 	private byte[] magic = new byte[] { (byte) 0xE9, (byte) 0xBE, (byte) 0xB4, (byte) 0xD9 };
@@ -204,42 +186,6 @@ public class BaseMessage {
 			throw new ParsingException("Wrong digest for payload!");
 		}
 
-		try {
-			Class<? extends P2PMessage> cPayload = getPayloadType(command);
-
-			if (cPayload == null) {
-				throw new ParsingException("Unknown command: " + command);
-			}
-
-			Constructor<? extends P2PMessage> constructor = cPayload.getConstructor(InputBuffer.class);
-			payload = constructor.newInstance(buffer);
-		} catch (NoSuchMethodException e) {
-			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command + " is missing a Constructor(InputBuffer)!",
-					e);
-			System.exit(1);
-		} catch (InstantiationException e) {
-			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command + " is abstract!", e);
-			System.exit(1);
-		} catch (IllegalAccessException e) {
-			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
-					+ " has an inaccessible Constructor(InputStream)!", e);
-			System.exit(1);
-		} catch (IllegalArgumentException e) {
-			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command + " caused an error!", e);
-			System.exit(1);
-		} catch (InvocationTargetException e) {
-			if (e.getCause() instanceof ParsingException) {
-				throw (ParsingException) e.getCause();
-			} else if (e.getCause() instanceof IOException) {
-				throw (IOException) e.getCause();
-			} else {
-				LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command + " caused an error!", e);
-				System.exit(1);
-			}
-		}
-	}
-
-	public Class<? extends P2PMessage> getPayloadType(String command) {
-		return COMMANDS.get(command);
+		payload = factory.createP2PMessage(command, buffer);
 	}
 }
