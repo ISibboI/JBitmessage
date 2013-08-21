@@ -64,7 +64,7 @@ public class SimpleNetworkAddressMessage extends Message {
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
-		services = getMessageFactory().createNodeServicesMessage(b);
+		services = getMessageFactory().parseNodeServicesMessage(b);
 		b = b.getSubBuffer(services.length());
 
 		byte[] ipBytes = b.get(0, 16);

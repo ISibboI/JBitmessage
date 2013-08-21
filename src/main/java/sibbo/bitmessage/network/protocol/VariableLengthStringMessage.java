@@ -54,7 +54,7 @@ public class VariableLengthStringMessage extends Message {
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
-		VariableLengthIntegerMessage vLength = getMessageFactory().createVariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage vLength = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vLength.length());
 		long length = vLength.getLong();
 

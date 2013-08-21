@@ -65,11 +65,11 @@ public class MailMessage extends Message {
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
-		VariableLengthIntegerMessage i = getMessageFactory().createVariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage i = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(i.length());
 		encoding = MessageEncoding.getEncoding(i.getLong());
 
-		i = getMessageFactory().createVariableLengthIntegerMessage(b);
+		i = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(i.length());
 		long length = i.getLong();
 

@@ -54,7 +54,7 @@ public class AddrMessage extends P2PMessage {
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
-		VariableLengthIntegerMessage vLength = getMessageFactory().createVariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage vLength = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vLength.length());
 		long length = vLength.getLong();
 
@@ -65,7 +65,7 @@ public class AddrMessage extends P2PMessage {
 		addresses = new ArrayList<NetworkAddressMessage>((int) length);
 
 		for (int i = 0; i < length; i++) {
-			NetworkAddressMessage nam = getMessageFactory().createNetworkAddressMessage(b);
+			NetworkAddressMessage nam = getMessageFactory().parseNetworkAddressMessage(b);
 			addresses.add(nam);
 			b = b.getSubBuffer(nam.length());
 		}

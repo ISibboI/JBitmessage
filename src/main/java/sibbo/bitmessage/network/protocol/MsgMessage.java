@@ -60,11 +60,11 @@ public class MsgMessage extends POWMessage {
 
 	@Override
 	protected void readPayload(InputBuffer b) throws IOException, ParsingException {
-		VariableLengthIntegerMessage v = getMessageFactory().createVariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage v = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		stream = v.getLong();
 
-		encrypted = getMessageFactory().createEncryptedMessage(b);
+		encrypted = getMessageFactory().parseEncryptedMessage(b);
 	}
 
 	@Override

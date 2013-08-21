@@ -96,14 +96,14 @@ public class UnencryptedMsgMessage extends Message {
 	protected void read(InputBuffer b) throws IOException, ParsingException {
 		InputBuffer signed = b.getSubBuffer(0);
 
-		VariableLengthIntegerMessage messageVersion = getMessageFactory().createVariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage messageVersion = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(messageVersion.length());
 
 		if (messageVersion.getLong() != MESSAGE_VERSION) {
 			throw new ParsingException("Cannot understand messages of version: " + messageVersion);
 		}
 
-		VariableLengthIntegerMessage vAddressVersion = getMessageFactory().createVariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage vAddressVersion = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vAddressVersion.length());
 		addressVersion = vAddressVersion.getLong();
 
@@ -111,11 +111,11 @@ public class UnencryptedMsgMessage extends Message {
 			throw new ParsingException("Unknown address version: " + addressVersion);
 		}
 
-		VariableLengthIntegerMessage vStream = getMessageFactory().createVariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage vStream = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vStream.length());
 		stream = vStream.getLong();
 
-		behavior = getMessageFactory().createBehaviorMessage(b);
+		behavior = getMessageFactory().parseBehaviorMessage(b);
 		b = b.getSubBuffer(behavior.length());
 
 		publicSigningKey = Util.getPublicKey(b.get(0, 64));
@@ -125,10 +125,10 @@ public class UnencryptedMsgMessage extends Message {
 		destinationRipe = b.get(84, 64);
 		b = b.getSubBuffer(148);
 
-		message = getMessageFactory().createMailMessage(b);
+		message = getMessageFactory().parseMailMessage(b);
 		b = b.getSubBuffer(message.length());
 
-		VariableLengthIntegerMessage vLength = getMessageFactory().createVariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage vLength = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vLength.length());
 		long length = vLength.getLong();
 
@@ -136,11 +136,11 @@ public class UnencryptedMsgMessage extends Message {
 			throw new ParsingException("The acknowlegment data is too long: " + length);
 		}
 
-		this.acknowledgment = getMessageFactory().createBaseMessage(
+		this.acknowledgment = getMessageFactory().parseBaseMessage(
 				new InputBufferInputStream(b.getSubBuffer(0, (int) length)), (int) length);
 		b = b.getSubBuffer((int) length);
 
-		vLength = getMessageFactory().createVariableLengthIntegerMessage(b);
+		vLength = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vLength.length());
 		length = vLength.getLong();
 

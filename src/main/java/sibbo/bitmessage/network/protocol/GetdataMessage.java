@@ -51,7 +51,7 @@ public class GetdataMessage extends P2PMessage {
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
-		VariableLengthIntegerMessage vLength = getMessageFactory().createVariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage vLength = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vLength.length());
 		long length = vLength.getLong();
 
@@ -62,7 +62,7 @@ public class GetdataMessage extends P2PMessage {
 		inv = new ArrayList<>((int) length);
 
 		for (int i = 0; i < length; i++) {
-			InventoryVectorMessage ivm = getMessageFactory().createInventoryVectorMessage(b);
+			InventoryVectorMessage ivm = getMessageFactory().parseInventoryVectorMessage(b);
 			inv.add(ivm);
 			b = b.getSubBuffer(ivm.length());
 		}

@@ -112,22 +112,22 @@ public class UnencryptedBroadcastMessage extends POWMessage {
 	protected void readPayload(InputBuffer b) throws IOException, ParsingException {
 		InputBuffer signed = b.getSubBuffer(0);
 
-		VariableLengthIntegerMessage v = getMessageFactory().createVariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage v = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 
 		if (BROADCAST_VERSION != v.getLong()) {
 			throw new ParsingException("Unknown broadcast message version: " + v.getLong());
 		}
 
-		v = getMessageFactory().createVariableLengthIntegerMessage(b);
+		v = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		addressVersion = v.getLong();
 
-		v = getMessageFactory().createVariableLengthIntegerMessage(b);
+		v = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		stream = v.getLong();
 
-		behavior = getMessageFactory().createBehaviorMessage(b);
+		behavior = getMessageFactory().parseBehaviorMessage(b);
 		b = b.getSubBuffer(behavior.length());
 
 		publicSigningKey = Util.getPublicKey(b.get(0, 64));
@@ -139,10 +139,10 @@ public class UnencryptedBroadcastMessage extends POWMessage {
 			throw new ParsingException("The hash of the public keys is incorrect.");
 		}
 
-		message = getMessageFactory().createMailMessage(b);
+		message = getMessageFactory().parseMailMessage(b);
 		b = b.getSubBuffer(message.length());
 
-		v = getMessageFactory().createVariableLengthIntegerMessage(b);
+		v = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		long length = v.getLong();
 

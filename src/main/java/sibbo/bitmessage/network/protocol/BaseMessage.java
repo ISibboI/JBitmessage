@@ -186,6 +186,6 @@ public class BaseMessage {
 			throw new ParsingException("Wrong digest for payload!");
 		}
 
-		payload = factory.createP2PMessage(command, buffer);
+		payload = factory.parseP2PMessage(command, buffer);
 	}
 }

@@ -48,7 +48,7 @@ public class VariableLengthIntegerListMessage extends Message {
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
-		VariableLengthIntegerMessage length = getMessageFactory().createVariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage length = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(length.length());
 		long l = length.getLong();
 
@@ -59,7 +59,7 @@ public class VariableLengthIntegerListMessage extends Message {
 		ints = new long[(int) l];
 
 		for (int i = 0; i < l; i++) {
-			VariableLengthIntegerMessage v = getMessageFactory().createVariableLengthIntegerMessage(b);
+			VariableLengthIntegerMessage v = getMessageFactory().parseVariableLengthIntegerMessage(b);
 			b = b.getSubBuffer(v.length());
 			ints[i] = v.getLong();
 		}

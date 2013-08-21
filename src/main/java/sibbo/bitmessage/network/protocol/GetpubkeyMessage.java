@@ -74,11 +74,11 @@ public class GetpubkeyMessage extends POWMessage {
 
 	@Override
 	protected void readPayload(InputBuffer b) throws IOException, ParsingException {
-		VariableLengthIntegerMessage v = getMessageFactory().createVariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage v = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		addressVersion = v.getLong();
 
-		v = getMessageFactory().createVariableLengthIntegerMessage(b);
+		v = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		streamNumber = v.getLong();
 

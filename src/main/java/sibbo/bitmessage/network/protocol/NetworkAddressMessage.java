@@ -85,7 +85,7 @@ public class NetworkAddressMessage extends Message {
 		stream = Util.getInt(b.get(4, 4));
 		b = b.getSubBuffer(8);
 
-		services = getMessageFactory().createNodeServicesMessage(b);
+		services = getMessageFactory().parseNodeServicesMessage(b);
 		b = b.getSubBuffer(services.length());
 
 		byte[] ipBytes = b.get(0, 16);

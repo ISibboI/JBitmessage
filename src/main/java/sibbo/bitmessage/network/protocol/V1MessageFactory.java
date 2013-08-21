@@ -1,6 +1,7 @@
 package sibbo.bitmessage.network.protocol;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Objects;
 import java.util.logging.Logger;
 
@@ -8,9 +9,8 @@ public class V1MessageFactory implements MessageFactory {
 	private static final Logger LOG = Logger.getLogger(V1MessageFactory.class.getName());
 
 	@Override
-	public InventoryVectorMessage createInventoryVectorMessage(InputBuffer b) {
-		// TODO Auto-generated method stub
-		return null;
+	public InventoryVectorMessage parseInventoryVectorMessage(InputBuffer b) throws IOException, ParsingException {
+		return new InventoryVectorMessage(b, this);
 	}
 
 	/**
@@ -57,91 +57,76 @@ public class V1MessageFactory implements MessageFactory {
 	}
 
 	@Override
-	public EncryptedMessage createEncryptedMessage(InputBuffer b) {
-		// TODO Auto-generated method stub
-		return null;
+	public EncryptedMessage parseEncryptedMessage(InputBuffer b) throws IOException, ParsingException {
+		return new EncryptedMessage(b, this);
 	}
 
 	@Override
 	public InventoryVectorMessage createInventoryVectorMessage(byte[] hash) {
-		// TODO Auto-generated method stub
-		return null;
+		return new InventoryVectorMessage(hash, this);
 	}
 
 	@Override
-	public NodeServicesMessage createNodeServicesMessage(InputBuffer b) {
-		// TODO Auto-generated method stub
-		return null;
+	public NodeServicesMessage parseNodeServicesMessage(InputBuffer b) throws IOException, ParsingException {
+		return new NodeServicesMessage(b, this);
 	}
 
 	@Override
-	public BehaviorMessage createBehaviorMessage(InputBuffer b) {
-		// TODO Auto-generated method stub
-		return null;
+	public BehaviorMessage parseBehaviorMessage(InputBuffer b) throws IOException, ParsingException {
+		return new BehaviorMessage(b, this);
 	}
 
 	@Override
-	public MailMessage createMailMessage(InputBuffer b) {
-		// TODO Auto-generated method stub
-		return null;
+	public MailMessage parseMailMessage(InputBuffer b) throws IOException, ParsingException {
+		return new MailMessage(b, this);
 	}
 
 	@Override
-	public VariableLengthIntegerMessage createVariableLengthIntegerMessage(InputBuffer b) {
-		// TODO Auto-generated method stub
-		return null;
+	public VariableLengthIntegerMessage parseVariableLengthIntegerMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		return new VariableLengthIntegerMessage(b, this);
 	}
 
 	@Override
 	public VariableLengthIntegerMessage createVariableLengthIntegerMessage(long l) {
-		// TODO Auto-generated method stub
-		return null;
+		return new VariableLengthIntegerMessage(l, this);
 	}
 
 	@Override
-	public VersionMessage createVariableLengthStringMessage(String userAgent) {
-		// TODO Auto-generated method stub
-		return null;
+	public VariableLengthStringMessage createVariableLengthStringMessage(String userAgent) {
+		return new VariableLengthStringMessage(userAgent, this);
 	}
 
 	@Override
-	public VersionMessage createVariableLengthIntegerListMessage(long[] streams) {
-		// TODO Auto-generated method stub
-		return null;
+	public VariableLengthIntegerListMessage createVariableLengthIntegerListMessage(long[] streams) {
+		return new VariableLengthIntegerListMessage(streams, this);
 	}
 
 	@Override
-	public VariableLengthIntegerListMessage createVariableLengthIntegerListMessage(InputBuffer b) {
-		// TODO Auto-generated method stub
-		return null;
+	public VariableLengthIntegerListMessage parseVariableLengthIntegerListMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		return new VariableLengthIntegerListMessage(b, this);
 	}
 
 	@Override
-	public VariableLengthStringMessage createVariableLengthStringMessage(InputBuffer b) {
-		// TODO Auto-generated method stub
-		return null;
+	public VariableLengthStringMessage parseVariableLengthStringMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		return new VariableLengthStringMessage(b, this);
 	}
 
 	@Override
-	public SimpleNetworkAddressMessage createSimpleNetworkAddressMessage(InputBuffer b) {
-		// TODO Auto-generated method stub
-		return null;
+	public SimpleNetworkAddressMessage parseSimpleNetworkAddressMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		return new SimpleNetworkAddressMessage(b, this);
 	}
 
 	@Override
-	public NetworkAddressMessage createNetworkAddressMessage(InputBuffer b) {
-		// TODO Auto-generated method stub
-		return null;
+	public NetworkAddressMessage parseNetworkAddressMessage(InputBuffer b) throws IOException, ParsingException {
+		return new NetworkAddressMessage(b, this);
 	}
 
 	@Override
-	public BaseMessage createBaseMessage(InputBufferInputStream inputBufferInputStream, int length) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public P2PMessage createP2PMessage(String command, InputBuffer buffer) throws ParsingException, IOException {
+	public P2PMessage parseP2PMessage(String command, InputBuffer buffer) throws ParsingException, IOException {
 		switch (command) {
 		case VersionMessage.COMMAND:
 			return new VersionMessage(buffer, this);
@@ -164,5 +149,10 @@ public class V1MessageFactory implements MessageFactory {
 		default:
 			throw new ParsingException("Unknown command: " + command);
 		}
+	}
+
+	@Override
+	public BaseMessage parseBaseMessage(InputStream in, int length) throws IOException, ParsingException {
+		return new BaseMessage(in, length, this);
 	}
 }

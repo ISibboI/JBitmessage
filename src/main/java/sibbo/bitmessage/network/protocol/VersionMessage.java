@@ -119,26 +119,26 @@ public class VersionMessage extends P2PMessage {
 			throw new ParsingException("Unsupported protocol version: " + version);
 		}
 
-		services = getMessageFactory().createNodeServicesMessage(b);
+		services = getMessageFactory().parseNodeServicesMessage(b);
 		b = b.getSubBuffer(services.length());
 
 		timestamp = Util.getLong(b.get(0, 8));
 		b = b.getSubBuffer(8);
 
-		receiver = getMessageFactory().createSimpleNetworkAddressMessage(b);
+		receiver = getMessageFactory().parseSimpleNetworkAddressMessage(b);
 		b = b.getSubBuffer(receiver.length());
 
-		sender = getMessageFactory().createSimpleNetworkAddressMessage(b);
+		sender = getMessageFactory().parseSimpleNetworkAddressMessage(b);
 		b = b.getSubBuffer(sender.length());
 
 		nonce = Util.getLong(b.get(0, 8));
 		b = b.getSubBuffer(8);
 
-		VariableLengthStringMessage vUserAgent = getMessageFactory().createVariableLengthStringMessage(b);
+		VariableLengthStringMessage vUserAgent = getMessageFactory().parseVariableLengthStringMessage(b);
 		b = b.getSubBuffer(vUserAgent.length());
 		userAgent = vUserAgent.getMessage();
 
-		streams = getMessageFactory().createVariableLengthIntegerListMessage(b).getContent();
+		streams = getMessageFactory().parseVariableLengthIntegerListMessage(b).getContent();
 	}
 
 	@Override
