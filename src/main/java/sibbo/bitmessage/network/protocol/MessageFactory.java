@@ -2,39 +2,88 @@ package sibbo.bitmessage.network.protocol;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
+import java.util.Collection;
 
-public interface MessageFactory {
+import org.bouncycastle.jce.provider.JCEECPublicKey;
 
-	InventoryVectorMessage createInventoryVectorMessage(byte[] hash);
+public abstract class MessageFactory {
+	/**
+	 * Creates a new message factory that implements the given protocol version.
+	 * 
+	 * @param version
+	 *            The protocol version.
+	 * @return A message factory creating objects fitting to the given protocol
+	 *         version.
+	 */
+	public static final MessageFactory getFactoryByVersion(int version) {
+		switch (version) {
+		case 1:
+			return new V1MessageFactory();
+		default:
+			return null;
+		}
+	}
 
-	VariableLengthIntegerListMessage createVariableLengthIntegerListMessage(long[] streams);
+	public abstract AddrMessage createAddrMessage(Collection<NetworkAddressMessage> addresses);
 
-	VariableLengthIntegerMessage createVariableLengthIntegerMessage(long l);
+	public abstract BaseMessage createBaseMessage(P2PMessage message);
 
-	VariableLengthStringMessage createVariableLengthStringMessage(String userAgent);
+	public abstract EncryptedMessage createEncryptedMessage(byte[] iv, JCEECPublicKey key, byte[] encrypted, byte[] mac);
 
-	BaseMessage parseBaseMessage(InputStream in, int length) throws IOException, ParsingException;
+	public abstract GetdataMessage createGetdataMessage(Collection<InventoryVectorMessage> inv);
 
-	BehaviorMessage parseBehaviorMessage(InputBuffer b) throws IOException, ParsingException;
+	public abstract InventoryVectorMessage createInventoryVectorMessage(byte[] hash);
 
-	EncryptedMessage parseEncryptedMessage(InputBuffer b) throws IOException, ParsingException;
+	public abstract InvMessage createInvMessage(Collection<InventoryVectorMessage> inv);
 
-	InventoryVectorMessage parseInventoryVectorMessage(InputBuffer b) throws IOException, ParsingException;
+	public abstract NodeServicesMessage createNodeServicesMessage(long services);
 
-	MailMessage parseMailMessage(InputBuffer b) throws IOException, ParsingException;
+	public abstract SimpleNetworkAddressMessage createSimpleNetworkAddressMessage(NodeServicesMessage services,
+			InetAddress address, int port);
 
-	NetworkAddressMessage parseNetworkAddressMessage(InputBuffer b) throws IOException, ParsingException;
+	public abstract VariableLengthIntegerListMessage createVariableLengthIntegerListMessage(long[] streams);
 
-	NodeServicesMessage parseNodeServicesMessage(InputBuffer b) throws IOException, ParsingException;
+	public abstract VariableLengthIntegerMessage createVariableLengthIntegerMessage(long l);
 
-	P2PMessage parseP2PMessage(String command, InputBuffer buffer) throws ParsingException, IOException;
+	public abstract VariableLengthStringMessage createVariableLengthStringMessage(String userAgent);
 
-	SimpleNetworkAddressMessage parseSimpleNetworkAddressMessage(InputBuffer b) throws IOException, ParsingException;
+	public abstract VerackMessage createVerackMessage();
 
-	VariableLengthIntegerListMessage parseVariableLengthIntegerListMessage(InputBuffer b) throws IOException,
+	public abstract VersionMessage createVersionMessage(NodeServicesMessage services, long time,
+			SimpleNetworkAddressMessage receiver, SimpleNetworkAddressMessage sender, long nonce, String userAgent,
+			long[] streams);
+
+	public abstract BaseMessage parseBaseMessage(InputStream in, int length) throws IOException, ParsingException;
+
+	public abstract BehaviorMessage parseBehaviorMessage(InputBuffer b) throws IOException, ParsingException;
+
+	public abstract EncryptedMessage parseEncryptedMessage(InputBuffer b) throws IOException, ParsingException;
+
+	public abstract InventoryVectorMessage parseInventoryVectorMessage(InputBuffer b) throws IOException,
 			ParsingException;
 
-	VariableLengthIntegerMessage parseVariableLengthIntegerMessage(InputBuffer b) throws IOException, ParsingException;
+	public abstract MailMessage parseMailMessage(InputBuffer b) throws IOException, ParsingException;
 
-	VariableLengthStringMessage parseVariableLengthStringMessage(InputBuffer b) throws IOException, ParsingException;
+	public abstract NetworkAddressMessage parseNetworkAddressMessage(InputBuffer b) throws IOException,
+			ParsingException;
+
+	public abstract NodeServicesMessage parseNodeServicesMessage(InputBuffer b) throws IOException, ParsingException;
+
+	public abstract P2PMessage parseP2PMessage(String command, InputBuffer buffer) throws ParsingException, IOException;
+
+	public abstract SimpleNetworkAddressMessage parseSimpleNetworkAddressMessage(InputBuffer b) throws IOException,
+			ParsingException;
+
+	public abstract UnencryptedMsgMessage parseUnencryptedMsgMessage(InputBuffer b) throws IOException,
+			ParsingException;
+
+	public abstract VariableLengthIntegerListMessage parseVariableLengthIntegerListMessage(InputBuffer b)
+			throws IOException, ParsingException;
+
+	public abstract VariableLengthIntegerMessage parseVariableLengthIntegerMessage(InputBuffer b) throws IOException,
+			ParsingException;
+
+	public abstract VariableLengthStringMessage parseVariableLengthStringMessage(InputBuffer b) throws IOException,
+			ParsingException;
 }

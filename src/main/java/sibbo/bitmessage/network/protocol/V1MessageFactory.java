@@ -2,15 +2,82 @@ package sibbo.bitmessage.network.protocol;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
+import java.util.Collection;
 import java.util.Objects;
 import java.util.logging.Logger;
 
-public class V1MessageFactory implements MessageFactory {
+import org.bouncycastle.jce.provider.JCEECPublicKey;
+
+public class V1MessageFactory extends MessageFactory {
 	private static final Logger LOG = Logger.getLogger(V1MessageFactory.class.getName());
 
 	@Override
-	public InventoryVectorMessage parseInventoryVectorMessage(InputBuffer b) throws IOException, ParsingException {
-		return new InventoryVectorMessage(b, this);
+	public AddrMessage createAddrMessage(Collection<NetworkAddressMessage> addresses) {
+		return new AddrMessage(addresses, this);
+	}
+
+	@Override
+	public BaseMessage createBaseMessage(P2PMessage message) {
+		return new BaseMessage(message, this);
+	}
+
+	@Override
+	public EncryptedMessage createEncryptedMessage(byte[] iv, JCEECPublicKey key, byte[] encrypted, byte[] mac) {
+		return new EncryptedMessage(iv, key, encrypted, mac, this);
+	}
+
+	@Override
+	public GetdataMessage createGetdataMessage(Collection<InventoryVectorMessage> inv) {
+		return new GetdataMessage(inv, this);
+	}
+
+	@Override
+	public InventoryVectorMessage createInventoryVectorMessage(byte[] hash) {
+		return new InventoryVectorMessage(hash, this);
+	}
+
+	@Override
+	public InvMessage createInvMessage(Collection<InventoryVectorMessage> inv) {
+		return new InvMessage(inv, this);
+	}
+
+	@Override
+	public NodeServicesMessage createNodeServicesMessage(long services) {
+		return new NodeServicesMessage(this, services);
+	}
+
+	@Override
+	public SimpleNetworkAddressMessage createSimpleNetworkAddressMessage(NodeServicesMessage services,
+			InetAddress address, int port) {
+		return new SimpleNetworkAddressMessage(services, address, port, this);
+	}
+
+	@Override
+	public VariableLengthIntegerListMessage createVariableLengthIntegerListMessage(long[] streams) {
+		return new VariableLengthIntegerListMessage(streams, this);
+	}
+
+	@Override
+	public VariableLengthIntegerMessage createVariableLengthIntegerMessage(long l) {
+		return new VariableLengthIntegerMessage(l, this);
+	}
+
+	@Override
+	public VariableLengthStringMessage createVariableLengthStringMessage(String userAgent) {
+		return new VariableLengthStringMessage(userAgent, this);
+	}
+
+	@Override
+	public VerackMessage createVerackMessage() {
+		return new VerackMessage(this);
+	}
+
+	@Override
+	public VersionMessage createVersionMessage(NodeServicesMessage services, long time,
+			SimpleNetworkAddressMessage receiver, SimpleNetworkAddressMessage sender, long nonce, String userAgent,
+			long[] streams) {
+		return new VersionMessage(services, time, receiver, sender, nonce, userAgent, streams, this);
 	}
 
 	/**
@@ -25,19 +92,6 @@ public class V1MessageFactory implements MessageFactory {
 		Objects.requireNonNull(data, "data must not be null.");
 
 		return new MailMessage(MessageEncoding.IGNORE, data, null, null, this);
-	}
-
-	/**
-	 * Returns a new TRIVIAL message.
-	 * 
-	 * @param content
-	 *            The message text.
-	 * @return A new trivial message.
-	 */
-	public MailMessage getTrivialMailMessage(String content) {
-		Objects.requireNonNull(content, "content must not be null.");
-
-		return new MailMessage(MessageEncoding.TRIVIAL, null, null, content, this);
 	}
 
 	/**
@@ -56,19 +110,22 @@ public class V1MessageFactory implements MessageFactory {
 		return new MailMessage(MessageEncoding.SIMPLE, null, subject, content, this);
 	}
 
-	@Override
-	public EncryptedMessage parseEncryptedMessage(InputBuffer b) throws IOException, ParsingException {
-		return new EncryptedMessage(b, this);
+	/**
+	 * Returns a new TRIVIAL message.
+	 * 
+	 * @param content
+	 *            The message text.
+	 * @return A new trivial message.
+	 */
+	public MailMessage getTrivialMailMessage(String content) {
+		Objects.requireNonNull(content, "content must not be null.");
+
+		return new MailMessage(MessageEncoding.TRIVIAL, null, null, content, this);
 	}
 
 	@Override
-	public InventoryVectorMessage createInventoryVectorMessage(byte[] hash) {
-		return new InventoryVectorMessage(hash, this);
-	}
-
-	@Override
-	public NodeServicesMessage parseNodeServicesMessage(InputBuffer b) throws IOException, ParsingException {
-		return new NodeServicesMessage(b, this);
+	public BaseMessage parseBaseMessage(InputStream in, int length) throws IOException, ParsingException {
+		return new BaseMessage(in, length, this);
 	}
 
 	@Override
@@ -77,52 +134,28 @@ public class V1MessageFactory implements MessageFactory {
 	}
 
 	@Override
+	public EncryptedMessage parseEncryptedMessage(InputBuffer b) throws IOException, ParsingException {
+		return new EncryptedMessage(b, this);
+	}
+
+	@Override
+	public InventoryVectorMessage parseInventoryVectorMessage(InputBuffer b) throws IOException, ParsingException {
+		return new InventoryVectorMessage(b, this);
+	}
+
+	@Override
 	public MailMessage parseMailMessage(InputBuffer b) throws IOException, ParsingException {
 		return new MailMessage(b, this);
 	}
 
 	@Override
-	public VariableLengthIntegerMessage parseVariableLengthIntegerMessage(InputBuffer b) throws IOException,
-			ParsingException {
-		return new VariableLengthIntegerMessage(b, this);
-	}
-
-	@Override
-	public VariableLengthIntegerMessage createVariableLengthIntegerMessage(long l) {
-		return new VariableLengthIntegerMessage(l, this);
-	}
-
-	@Override
-	public VariableLengthStringMessage createVariableLengthStringMessage(String userAgent) {
-		return new VariableLengthStringMessage(userAgent, this);
-	}
-
-	@Override
-	public VariableLengthIntegerListMessage createVariableLengthIntegerListMessage(long[] streams) {
-		return new VariableLengthIntegerListMessage(streams, this);
-	}
-
-	@Override
-	public VariableLengthIntegerListMessage parseVariableLengthIntegerListMessage(InputBuffer b) throws IOException,
-			ParsingException {
-		return new VariableLengthIntegerListMessage(b, this);
-	}
-
-	@Override
-	public VariableLengthStringMessage parseVariableLengthStringMessage(InputBuffer b) throws IOException,
-			ParsingException {
-		return new VariableLengthStringMessage(b, this);
-	}
-
-	@Override
-	public SimpleNetworkAddressMessage parseSimpleNetworkAddressMessage(InputBuffer b) throws IOException,
-			ParsingException {
-		return new SimpleNetworkAddressMessage(b, this);
-	}
-
-	@Override
 	public NetworkAddressMessage parseNetworkAddressMessage(InputBuffer b) throws IOException, ParsingException {
 		return new NetworkAddressMessage(b, this);
+	}
+
+	@Override
+	public NodeServicesMessage parseNodeServicesMessage(InputBuffer b) throws IOException, ParsingException {
+		return new NodeServicesMessage(b, this);
 	}
 
 	@Override
@@ -152,7 +185,31 @@ public class V1MessageFactory implements MessageFactory {
 	}
 
 	@Override
-	public BaseMessage parseBaseMessage(InputStream in, int length) throws IOException, ParsingException {
-		return new BaseMessage(in, length, this);
+	public SimpleNetworkAddressMessage parseSimpleNetworkAddressMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		return new SimpleNetworkAddressMessage(b, this);
+	}
+
+	@Override
+	public UnencryptedMsgMessage parseUnencryptedMsgMessage(InputBuffer b) throws IOException, ParsingException {
+		return new UnencryptedMsgMessage(b, this);
+	}
+
+	@Override
+	public VariableLengthIntegerListMessage parseVariableLengthIntegerListMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		return new VariableLengthIntegerListMessage(b, this);
+	}
+
+	@Override
+	public VariableLengthIntegerMessage parseVariableLengthIntegerMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		return new VariableLengthIntegerMessage(b, this);
+	}
+
+	@Override
+	public VariableLengthStringMessage parseVariableLengthStringMessage(InputBuffer b) throws IOException,
+			ParsingException {
+		return new VariableLengthStringMessage(b, this);
 	}
 }

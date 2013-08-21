@@ -11,11 +11,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
-import sibbo.bitmessage.Options;
 import sibbo.bitmessage.crypt.BMAddress;
 import sibbo.bitmessage.network.protocol.InventoryVectorMessage;
 import sibbo.bitmessage.network.protocol.NetworkAddressMessage;
-import sibbo.bitmessage.network.protocol.NodeServicesMessage;
 import sibbo.bitmessage.network.protocol.POWMessage;
 
 /**
@@ -26,24 +24,22 @@ import sibbo.bitmessage.network.protocol.POWMessage;
  * @version 1.0
  */
 public class Datastore {
-	private static final Logger LOG = Logger.getLogger(Datastore.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(Datastore.class.getName());
 	/** The database. */
-	private Database database;
+	private final Database database;
 
 	/** Stores the hashes of all objects that we have. */
-	private Set<InventoryVectorMessage> localObjects = Collections
+	private final Set<InventoryVectorMessage> localObjects = Collections
 			.synchronizedSet(new HashSet<InventoryVectorMessage>());
 
 	/** Caches objects to reduce disc activity. */
-	private Map<InventoryVectorMessage, POWMessage> objectCache = new Hashtable<>();
+	private final Map<InventoryVectorMessage, POWMessage> objectCache = new Hashtable<>();
 
 	/** Stores all nodes that we know. */
-	private Map<Long, Map<NetworkAddressMessage, NetworkAddressMessage>> knownNodes = new Hashtable<>();
+	private final Map<Long, Map<NetworkAddressMessage, NetworkAddressMessage>> knownNodes = new Hashtable<>();
 
 	/** Stores all addresses we own. */
-	private Set<BMAddress> ownedAddresses = Collections
-			.synchronizedSet(new HashSet<BMAddress>());
+	private final Set<BMAddress> ownedAddresses = Collections.synchronizedSet(new HashSet<BMAddress>());
 
 	/** If true, the datastore stops as fast as possible. */
 	private volatile boolean stop;
@@ -51,16 +47,63 @@ public class Datastore {
 	/**
 	 * Creates a new datastore with the given name.
 	 * 
-	 * @param datastorePath The path to the file containing the datastore.
+	 * @param datastorePath
+	 *            The path to the file containing the datastore.
 	 */
 	public Datastore(String datastoreName) {
 		database = new Database(datastoreName);
 	}
 
 	/**
+	 * Returns a list containing all nodes from the given list that are not
+	 * present in the datastore.
+	 * 
+	 * @param list
+	 *            The list of nodes to filter.
+	 * @return A list containing only nodes that are not present in the
+	 *         datastore.
+	 */
+	public List<NetworkAddressMessage> filterNodesThatWeAlreadyHave(List<NetworkAddressMessage> list) {
+		List<NetworkAddressMessage> l = new ArrayList<>(list);
+
+		for (Map<NetworkAddressMessage, NetworkAddressMessage> m : knownNodes.values()) {
+			l.removeAll(m.values());
+		}
+
+		return l;
+	}
+
+	/**
+	 * Returns a list containing all inventory vectors from the given list that
+	 * represent objects we don't have.
+	 * 
+	 * @param inventoryVectors
+	 *            The inventory vectors to check.
+	 * @return The given inventory vectors without those that represent objects
+	 *         that we already have.
+	 */
+	public List<InventoryVectorMessage> filterObjectsThatWeAlreadyHave(List<InventoryVectorMessage> inventoryVectors) {
+		List<InventoryVectorMessage> l = new ArrayList<>(inventoryVectors);
+
+		l.removeAll(localObjects);
+
+		return l;
+	}
+
+	/**
+	 * Returns all addresses that we own.
+	 * 
+	 * @return All addresses that we own.
+	 */
+	public Collection<BMAddress> getAddresses() {
+		return new ArrayList<>(ownedAddresses);
+	}
+
+	/**
 	 * Returns a list with all nodes that belong to one of the given streams.
 	 * 
-	 * @param streams The streams.
+	 * @param streams
+	 *            The streams.
 	 * @return A list with all nodes that belong to one of the given streams.
 	 */
 	public List<NetworkAddressMessage> getNodes(long[] streams) {
@@ -68,8 +111,7 @@ public class Datastore {
 		int size = 0;
 
 		for (long stream : streams) {
-			Map<NetworkAddressMessage, NetworkAddressMessage> s = knownNodes
-					.get(stream);
+			Map<NetworkAddressMessage, NetworkAddressMessage> s = knownNodes.get(stream);
 
 			if (s != null) {
 				nodeLists.add(s);
@@ -87,31 +129,14 @@ public class Datastore {
 	}
 
 	/**
-	 * Returns a list containing all inventory vectors from the given list that
-	 * represent objects we don't have.
-	 * 
-	 * @param inventoryVectors The inventory vectors to check.
-	 * @return The given inventory vectors without those that represent objects
-	 *         that we already have.
-	 */
-	public List<InventoryVectorMessage> filterObjectsThatWeAlreadyHave(
-			List<InventoryVectorMessage> inventoryVectors) {
-		List<InventoryVectorMessage> l = new ArrayList<>(inventoryVectors);
-
-		l.removeAll(localObjects);
-
-		return l;
-	}
-
-	/**
 	 * Returns the POWMessages that belong to the given InventoryVectors
 	 * (hashes).
 	 * 
-	 * @param inventoryVectors The hashes.
+	 * @param inventoryVectors
+	 *            The hashes.
 	 * @return The objects that belong to the given hashes.
 	 */
-	public List<POWMessage> getObjects(
-			List<InventoryVectorMessage> inventoryVectors) {
+	public List<POWMessage> getObjects(List<InventoryVectorMessage> inventoryVectors) {
 		List<POWMessage> objects = new ArrayList<>(inventoryVectors.size());
 
 		for (InventoryVectorMessage m : inventoryVectors) {
@@ -132,30 +157,21 @@ public class Datastore {
 	}
 
 	/**
-	 * Removes the node with the given ip and port if its older than the
-	 * threshold (Can be set via Options).
+	 * Returns a random node from the datastore.
 	 * 
-	 * @param address The address of the node.
-	 * @param port The port of the node.
+	 * @return A random node from the datastore.
 	 */
-	public void removeNodeIfOld(InetAddress address, int port) {
-		for (Map<NetworkAddressMessage, NetworkAddressMessage> s : knownNodes
-				.values()) {
-			NetworkAddressMessage m = s.get(new NetworkAddressMessage(1, 1,
-					new NodeServicesMessage(NodeServicesMessage.NODE_NETWORK),
-					address, port));
+	public NetworkAddressMessage getRandomNode(long stream) {
+		List<NetworkAddressMessage> nodes = new ArrayList<>(knownNodes.get(stream).keySet());
 
-			if (m.getTime() < (System.currentTimeMillis() / 1000)
-					- Options.getInstance().getInt("data.maxNodeStorageTime")) {
-				s.remove(m);
-			}
-		}
+		return nodes.get((int) (Math.random() * nodes.size()));
 	}
 
 	/**
 	 * Adds the given object to the datastore.
 	 * 
-	 * @param m The object to add.
+	 * @param m
+	 *            The object to add.
 	 * @return True if the object was added, false if it already exists.
 	 */
 	public boolean put(POWMessage m) {
@@ -170,54 +186,17 @@ public class Datastore {
 	}
 
 	/**
-	 * Returns all addresses that we own.
-	 * 
-	 * @return All addresses that we own.
-	 */
-	public Collection<BMAddress> getAddresses() {
-		return new ArrayList<>(ownedAddresses);
-	}
-
-	/**
-	 * Returns a list containing all nodes from the given list that are not
-	 * present in the datastore.
-	 * 
-	 * @param list The list of nodes to filter.
-	 * @return A list containing only nodes that are not present in the
-	 *         datastore.
-	 */
-	public List<NetworkAddressMessage> filterNodesThatWeAlreadyHave(
-			List<NetworkAddressMessage> list) {
-		List<NetworkAddressMessage> l = new ArrayList<>(list);
-
-		for (Map<NetworkAddressMessage, NetworkAddressMessage> m : knownNodes
-				.values()) {
-			l.removeAll(m.values());
-		}
-
-		return l;
-	}
-
-	/**
-	 * Stops the datastore as fast as possible.
-	 */
-	public void stop() {
-		stop = true;
-	}
-
-	/**
 	 * Adds all given nodes to the datastore, if they don't exist.
 	 * 
-	 * @param list The nodes to add.
+	 * @param list
+	 *            The nodes to add.
 	 * @return A list containing all nodes that were added.
 	 */
-	public Collection<NetworkAddressMessage> putAll(
-			List<NetworkAddressMessage> list) {
+	public Collection<NetworkAddressMessage> putAll(List<NetworkAddressMessage> list) {
 		List<NetworkAddressMessage> added = new ArrayList<>(list.size());
 
 		for (NetworkAddressMessage m : list) {
-			NetworkAddressMessage before = knownNodes.get(m.getStream()).put(m,
-					m);
+			NetworkAddressMessage before = knownNodes.get(m.getStream()).put(m, m);
 
 			if (before == null) {
 				added.add(m);
@@ -228,14 +207,33 @@ public class Datastore {
 	}
 
 	/**
-	 * Returns a random node from the datastore.
+	 * Removes the node with the given ip and port if its older than the
+	 * threshold (Can be set via Options).
 	 * 
-	 * @return A random node from the datastore.
+	 * @param address
+	 *            The address of the node.
+	 * @param port
+	 *            The port of the node.
 	 */
-	public NetworkAddressMessage getRandomNode(long stream) {
-		List<NetworkAddressMessage> nodes = new ArrayList<>(knownNodes.get(
-				stream).keySet());
+	public void removeNodeIfOld(InetAddress address, int port) {
+		for (Map<NetworkAddressMessage, NetworkAddressMessage> s : knownNodes.values()) {
+			// NetworkAddressMessage m = s.get(new NetworkAddressMessage(1, 1,
+			// new NodeServicesMessage(NodeServicesMessage.NODE_NETWORK),
+			// address, port));
 
-		return nodes.get((int) (Math.random() * nodes.size()));
+			// if (m.getTime() < (System.currentTimeMillis() / 1000)
+			// - Options.getInstance().getInt("data.maxNodeStorageTime")) {
+			// s.remove(m);
+			// }
+
+			throw new RuntimeException("Not implemented!");
+		}
+	}
+
+	/**
+	 * Stops the datastore as fast as possible.
+	 */
+	public void stop() {
+		stop = true;
 	}
 }

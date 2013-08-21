@@ -14,9 +14,11 @@ import java.util.logging.Logger;
 import sibbo.bitmessage.network.protocol.BaseMessage;
 import sibbo.bitmessage.network.protocol.GetdataMessage;
 import sibbo.bitmessage.network.protocol.InvMessage;
+import sibbo.bitmessage.network.protocol.MessageFactory;
 import sibbo.bitmessage.network.protocol.NodeServicesMessage;
 import sibbo.bitmessage.network.protocol.ParsingException;
 import sibbo.bitmessage.network.protocol.SimpleNetworkAddressMessage;
+import sibbo.bitmessage.network.protocol.V1MessageFactory;
 import sibbo.bitmessage.network.protocol.VersionMessage;
 
 public class NetworkTest {
@@ -24,29 +26,30 @@ public class NetworkTest {
 
 	public static void main(String[] args) throws UnknownHostException, IOException, ParsingException,
 			InterruptedException {
+		MessageFactory factory = new V1MessageFactory();
 		System.out.println("local protocol: " + VersionMessage.PROTOCOL_VERSION);
 		Socket s = new Socket("141.134.180.7", 8444);
 		InputStream in = s.getInputStream();
 		OutputStream out = s.getOutputStream();
 
-		NodeServicesMessage services = new NodeServicesMessage(NodeServicesMessage.NODE_NETWORK);
+		NodeServicesMessage services = new NodeServicesMessage(factory, NodeServicesMessage.NODE_NETWORK);
 		SimpleNetworkAddressMessage sender = new SimpleNetworkAddressMessage(services,
-				InetAddress.getByName("localhost"), 8443);
+				InetAddress.getByName("localhost"), 8443, factory);
 		SimpleNetworkAddressMessage receiver = new SimpleNetworkAddressMessage(services,
-				InetAddress.getByName("192.168.0.104"), 8444);
+				InetAddress.getByName("192.168.0.104"), 8444, factory);
 
 		BaseMessage b = new BaseMessage(new VersionMessage(services, System.currentTimeMillis() / 1000, receiver,
-				sender, 62256750, "/JBitmessage:0.0.1/", new long[] { 1 }));
+				sender, 62256750, "/JBitmessage:0.0.1/", new long[] { 1 }, factory), factory);
 
 		out.write(b.getBytes());
 		out.flush();
 
 		Thread.sleep(2000);
 
-		BaseMessage answer = new BaseMessage(in, 10 * 1024 * 1024);
+		BaseMessage answer = new BaseMessage(in, 10 * 1024 * 1024, factory);
 		System.out.println(answer.getCommand());
 
-		answer = new BaseMessage(in, 10 * 1024 * 1024);
+		answer = new BaseMessage(in, 10 * 1024 * 1024, factory);
 		System.out.println(answer.getCommand());
 
 		VersionMessage remoteVersion = (VersionMessage) answer.getPayload();
@@ -54,18 +57,18 @@ public class NetworkTest {
 		System.out.println("Streams: " + Arrays.toString(remoteVersion.getStreams()));
 		System.out.println("Nonce: " + remoteVersion.getNonce());
 
-		BaseMessage inv = new BaseMessage(in, 10 * 1024 * 1024);
+		BaseMessage inv = new BaseMessage(in, 10 * 1024 * 1024, factory);
 		System.out.println(inv.getCommand());
 
 		Thread.sleep(10_000);
 
 		BaseMessage getDataMessage = new BaseMessage(new GetdataMessage(
-				((InvMessage) inv.getPayload()).getInventoryVectors()));
+				((InvMessage) inv.getPayload()).getInventoryVectors(), factory), factory);
 		out.write(getDataMessage.getBytes());
 		out.flush();
 
 		while (true) {
-			answer = new BaseMessage(in, 10 * 1024 * 1024);
+			answer = new BaseMessage(in, 10 * 1024 * 1024, factory);
 			System.out.println(answer.getCommand());
 
 			if (answer.getCommand().equals("msg")) {

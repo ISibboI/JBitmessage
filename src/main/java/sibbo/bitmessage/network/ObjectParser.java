@@ -16,6 +16,7 @@ import java.util.logging.Logger;
 import sibbo.bitmessage.crypt.BMAddress;
 import sibbo.bitmessage.crypt.CryptManager;
 import sibbo.bitmessage.network.protocol.InputBuffer;
+import sibbo.bitmessage.network.protocol.MessageFactory;
 import sibbo.bitmessage.network.protocol.MsgMessage;
 import sibbo.bitmessage.network.protocol.ParsingException;
 import sibbo.bitmessage.network.protocol.UnencryptedMsgMessage;
@@ -30,13 +31,16 @@ public class ObjectParser implements Runnable {
 	private static final Logger LOG = Logger.getLogger(ObjectParser.class.getName());
 
 	/** Messages to decrypt. */
-	private Queue<MsgMessage> queue = new LinkedList<>();
+	private final Queue<MsgMessage> queue = new LinkedList<>();
+
+	/** Factories for the messages to decrypt. */
+	private final Queue<MessageFactory> factoryQueue = new LinkedList<>();
 
 	/** The listeners that have to be informed if a new message was received. */
-	private List<MessageListener> listeners = new Vector<>();
+	private final List<MessageListener> listeners = new Vector<>();
 
 	/** Contains all addresses that can be used for decryption. */
-	private List<BMAddress> addresses = new ArrayList<>();
+	private final List<BMAddress> addresses = new ArrayList<>();
 
 	/** True if the object parser should stop as fast as possible. */
 	private volatile boolean stop;
@@ -51,14 +55,47 @@ public class ObjectParser implements Runnable {
 		this.addresses.addAll(addresses);
 	}
 
+	/**
+	 * Adds the given address to the set of addresses.
+	 * 
+	 * @param address
+	 *            The address to add.
+	 */
+	public void addPrivateKey(BMAddress address) {
+		Objects.requireNonNull(address, "address must not be null.");
+
+		addresses.add(address);
+	}
+
+	private void fireMessageReceived(UnencryptedMsgMessage u) {
+		for (MessageListener l : listeners) {
+			l.messageReceived(u);
+		}
+	}
+
+	/**
+	 * Schedules the parsing of the given message.
+	 * 
+	 * @param m
+	 *            The message to parse.
+	 */
+	public void parse(MsgMessage m, MessageFactory factory) {
+		synchronized (queue) {
+			queue.add(m);
+			factoryQueue.add(factory);
+		}
+	}
+
 	@Override
 	public void run() {
 		while (!stop) {
 			MsgMessage m = null;
+			MessageFactory factory = null;
 
 			synchronized (queue) {
 				if (queue.size() > 0) {
 					m = queue.poll();
+					factory = factoryQueue.poll();
 				}
 			}
 
@@ -82,7 +119,7 @@ public class ObjectParser implements Runnable {
 
 				if (result != null) {
 					try {
-						UnencryptedMsgMessage u = new UnencryptedMsgMessage(new InputBuffer(
+						UnencryptedMsgMessage u = factory.parseUnencryptedMsgMessage(new InputBuffer(
 								new ByteArrayInputStream(result), result.length, result.length));
 
 						if (!Arrays.equals(u.getDestinationRipe(), addr.getRipe())) {
@@ -101,40 +138,10 @@ public class ObjectParser implements Runnable {
 		}
 	}
 
-	private void fireMessageReceived(UnencryptedMsgMessage u) {
-		for (MessageListener l : listeners) {
-			l.messageReceived(u);
-		}
-	}
-
-	/**
-	 * Schedules the parsing of the given message.
-	 * 
-	 * @param m
-	 *            The message to parse.
-	 */
-	public void parse(MsgMessage m) {
-		synchronized (queue) {
-			queue.add(m);
-		}
-	}
-
 	/**
 	 * Stops the object parser as fast as possible.
 	 */
 	public void stop() {
 		stop = true;
-	}
-
-	/**
-	 * Adds the given address to the set of addresses.
-	 * 
-	 * @param address
-	 *            The address to add.
-	 */
-	public void addPrivateKey(BMAddress address) {
-		Objects.requireNonNull(address, "address must not be null.");
-
-		addresses.add(address);
 	}
 }

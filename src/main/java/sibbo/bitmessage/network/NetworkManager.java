@@ -25,36 +25,35 @@ import sibbo.bitmessage.network.protocol.Util;
  * @version 1.0
  */
 public class NetworkManager implements ConnectionListener, Runnable {
-	private static final Logger LOG = Logger.getLogger(NetworkManager.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(NetworkManager.class.getName());
 
 	/**
 	 * Contains all connections managed by this object.<br />
 	 * Thread-safe
 	 */
-	private List<Connection> connections = new Vector<>();
+	private final List<Connection> connections = new Vector<>();
 
 	/**
 	 * The objects that listen for network status changes.<br />
 	 * Thread-safe
 	 */
-	private List<NetworkListener> listeners = new Vector<>();
+	private final List<NetworkListener> listeners = new Vector<>();
 
 	/** The datastore that makes all data persistent. */
-	private Datastore datastore;
+	private final Datastore datastore;
 
 	/** Contains all objects that are currently requested from a node. */
 	// Note that this is a bad method to ensure that we get all objects but
 	// don't get anything twice. If someone sends an inv but never responds to a
 	// getdata and keeps connected, the respective objects will be blocked and
 	// can only be received if the network manager is restarted.
-	private Map<InventoryVectorMessage, Connection> alreadyRequested = new Hashtable<>();
+	private final Map<InventoryVectorMessage, Connection> alreadyRequested = new Hashtable<>();
 
 	/**
 	 * The parser to parse new objects. This is used to prevent timing attacks
 	 * on the network manager thread.
 	 */
-	private ObjectParser objectParser;
+	private final ObjectParser objectParser;
 
 	/** If this is true, the network manager stops as fast as possible. */
 	private volatile boolean stop;
@@ -66,13 +65,14 @@ public class NetworkManager implements ConnectionListener, Runnable {
 	private boolean activeMode;
 
 	/** A random nonce to detect connections to self. */
-	private long nonce;
+	private final long nonce;
 
 	/**
 	 * Creates a new network manager operating on the datastore at the given
 	 * path.
 	 * 
-	 * @param datastore The name of the datastore.
+	 * @param datastore
+	 *            The name of the datastore.
 	 */
 	public NetworkManager(String datastoreName) {
 		this.datastore = new Datastore(datastoreName);
@@ -89,10 +89,36 @@ public class NetworkManager implements ConnectionListener, Runnable {
 	/**
 	 * Adds the given NetworkListener.
 	 * 
-	 * @param l The listener to add.
+	 * @param l
+	 *            The listener to add.
 	 */
 	public void addNetworkListener(NetworkListener l) {
 		listeners.add(l);
+	}
+
+	@Override
+	public void advertisedObjects(List<InventoryVectorMessage> inventoryVectors, Connection c) {
+		Collection<InventoryVectorMessage> toSend = datastore.filterObjectsThatWeAlreadyHave(inventoryVectors);
+		toSend.removeAll(alreadyRequested.keySet());
+
+		for (InventoryVectorMessage i : toSend) {
+			alreadyRequested.put(i, c);
+		}
+
+		c.requestObjects(toSend);
+	}
+
+	@Override
+	public void connectionAborted(Connection c) {
+		connections.remove(c);
+
+		for (InventoryVectorMessage i : new HashSet<>(alreadyRequested.keySet())) {
+			if (alreadyRequested.get(i) == c) {
+				alreadyRequested.remove(i);
+			}
+		}
+
+		fireConnectionCountChanged(connections.size(), false);
 	}
 
 	@Override
@@ -112,16 +138,14 @@ public class NetworkManager implements ConnectionListener, Runnable {
 	}
 
 	@Override
-	public void connectionAborted(Connection c) {
-		connections.remove(c);
+	public void receivedNodes(List<NetworkAddressMessage> list, Connection c) {
+		Collection<NetworkAddressMessage> toSend = datastore.putAll(list);
 
-		for (InventoryVectorMessage i : new HashSet<>(alreadyRequested.keySet())) {
-			if (alreadyRequested.get(i) == c) {
-				alreadyRequested.remove(i);
+		for (Connection con : connections) {
+			if (con != c) {
+				con.advertiseNodes(toSend);
 			}
 		}
-
-		fireConnectionCountChanged(connections.size(), false);
 	}
 
 	@Override
@@ -136,50 +160,23 @@ public class NetworkManager implements ConnectionListener, Runnable {
 			}
 
 			if (m.getCommand().equals(MsgMessage.COMMAND)) {
-				objectParser.parse((MsgMessage) m);
+				objectParser.parse((MsgMessage) m, m.getMessageFactory());
 			}
 		}
-	}
-
-	@Override
-	public void receivedNodes(List<NetworkAddressMessage> list, Connection c) {
-		Collection<NetworkAddressMessage> toSend = datastore.putAll(list);
-
-		for (Connection con : connections) {
-			if (con != c) {
-				con.advertiseNodes(toSend);
-			}
-		}
-	}
-
-	@Override
-	public void advertisedObjects(
-			List<InventoryVectorMessage> inventoryVectors, Connection c) {
-		Collection<InventoryVectorMessage> toSend = datastore
-				.filterObjectsThatWeAlreadyHave(inventoryVectors);
-		toSend.removeAll(alreadyRequested.keySet());
-
-		for (InventoryVectorMessage i : toSend) {
-			alreadyRequested.put(i, c);
-		}
-
-		c.requestObjects(toSend);
 	}
 
 	@Override
 	public void run() {
 		while (!stop) {
-			if ((activeMode && connections.size() < Options.getInstance()
-					.getInt("network.activeMode.maxConnections"))
-					|| (!activeMode && connections.size() < Options
-							.getInstance().getInt(
-									"network.passiveMode.maxConnections"))) {
-				NetworkAddressMessage m = datastore.getRandomNode(1); // TODO Add
+			if ((activeMode && connections.size() < Options.getInstance().getInt("network.activeMode.maxConnections"))
+					|| (!activeMode && connections.size() < Options.getInstance().getInt(
+							"network.passiveMode.maxConnections"))) {
+				NetworkAddressMessage m = datastore.getRandomNode(1); // TODO
+																		// Add
 																		// multi
 																		// stream
 																		// management
-				Connection c = new Connection(m.getIp(), m.getPort(),
-						m.getStream(), this, nonce);
+				Connection c = new Connection(m.getIp(), m.getPort(), m.getStream(), this, nonce);
 				connections.add(c);
 			}
 
