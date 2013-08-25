@@ -154,12 +154,12 @@ public class POWWorker implements Runnable {
 			averageWork = 0.9f * averageWork + 0.1f * time;
 
 			if (averageLoad > topLoad || averageWork > topWork) {
-				iterations -= iterations >> 4;
+				iterations -= iterations >> 8;
 				averageLoad = targetLoad;
 				averageWork = workTime;
 				System.out.println("iterations: " + iterations);
 			} else if (averageLoad < bottomLoad || averageWork < bottomWork) {
-				iterations += iterations >> 4;
+				iterations += iterations >> 8;
 				averageLoad = targetLoad;
 				averageWork = workTime;
 				System.out.println("iterations: " + iterations);
@@ -168,8 +168,8 @@ public class POWWorker implements Runnable {
 
 		int usedFactor = iterations / ROUND_TIME;
 
-		if (usedFactor < Options.getInstance().getInt("pow.iterationfactor") * 0.9f
-				|| usedFactor > Options.getInstance().getInt("pow.iterationfactor") * 1.1f) {
+		if (usedFactor < Options.getInstance().getInt("pow.iterationfactor") * 0.8f
+				|| usedFactor > Options.getInstance().getInt("pow.iterationfactor") * 1.2f) {
 			Options.getInstance().setProperty("pow.iterationfactor", usedFactor);
 			LOG.info("Updated pow.iterationfactor to: " + usedFactor);
 		}
