@@ -1,3 +1,2 @@
-The network message parser and builder is finished.
-
-I'm working on the Connection class right now.
+Protocol version 2 is out, so the parser needs an architecture change to make it accept v1 and v2 messages without too much code duplication.
+The network communication classes will be redone partially, but only after I figured out a good way to make to organize the streams, to explore the netowrk on first contact and so on. Right now, there is no definition of a way to determine if a stream is "full".
