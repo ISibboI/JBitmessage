@@ -18,13 +18,13 @@ public class POWCalculator implements POWListener {
 	private static final int THREADS_PER_CPU = 1;
 
 	/** The target collision quality. */
-	private long target;
+	private final long target;
 
 	/** The hash of the message. */
-	private byte[] initialHash;
+	private final byte[] initialHash;
 
 	/** The target system load created by the calculation. (Per CPU) */
-	private float targetLoad;
+	private final float targetLoad;
 
 	/** The worker that found a valid nonce. */
 	private POWWorker finishedWorker;

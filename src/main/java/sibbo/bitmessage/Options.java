@@ -23,6 +23,7 @@ public class Options extends Properties {
 		defaults.setProperty("pow.averageNonceTrialsPerByte", 320);
 		defaults.setProperty("pow.payloadLengthExtraBytes", 14_000);
 		defaults.setProperty("pow.systemLoad", 0.5f);
+		defaults.setProperty("pow.iterationfactor", 100);
 		defaults.setProperty("network.connectTimeout", 5_000);
 		defaults.setProperty("network.timeout", 10_000);
 		defaults.setProperty("network.listenPort", 8443);
