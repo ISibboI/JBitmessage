@@ -47,6 +47,7 @@ public class POWTest {
 				"The calculation of " + CALCULATIONS + " POWs took " + (end - start) + "ms");
 	}
 
+	@Ignore
 	@Test
 	public void testShortMessageDuration() {
 		long start = System.currentTimeMillis();
