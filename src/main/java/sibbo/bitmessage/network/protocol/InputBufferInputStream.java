@@ -12,8 +12,7 @@ import java.util.logging.Logger;
  * 
  */
 public class InputBufferInputStream extends InputStream {
-	private static final Logger LOG = Logger
-			.getLogger(InputBufferInputStream.class.getName());
+	private static final Logger LOG = Logger.getLogger(InputBufferInputStream.class.getName());
 
 	private InputBuffer buffer;
 	private int index;
@@ -48,8 +47,7 @@ public class InputBufferInputStream extends InputStream {
 		}
 
 		if (offset + length >= b.length) {
-			throw new IndexOutOfBoundsException(
-					"Offset + length must be < b.length.");
+			throw new IndexOutOfBoundsException("Offset + length must be < b.length.");
 		}
 
 		if (index >= buffer.length()) {

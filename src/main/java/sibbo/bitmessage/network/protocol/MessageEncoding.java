@@ -17,7 +17,8 @@ public enum MessageEncoding {
 	/**
 	 * Returns the message encoding that is associated with the given constant.
 	 * 
-	 * @param constant The constant.
+	 * @param constant
+	 *            The constant.
 	 * @return The message encoding that is associated with the given constant.
 	 */
 	public static MessageEncoding getEncoding(long constant) {
@@ -32,8 +33,7 @@ public enum MessageEncoding {
 	}
 
 	private void put(long constant, MessageEncoding messageEncoding) {
-		Objects.requireNonNull(messageEncoding,
-				"messageEncoding must not be null.");
+		Objects.requireNonNull(messageEncoding, "messageEncoding must not be null.");
 
 		if (MAP == null) {
 			MAP = new HashMap<>();

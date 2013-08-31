@@ -11,8 +11,7 @@ import java.util.logging.Logger;
  * @version 1.0
  */
 public class KeyDataPair {
-	private static final Logger LOG = Logger.getLogger(KeyDataPair.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(KeyDataPair.class.getName());
 
 	/** The key. */
 	private KeyPair key;
@@ -23,8 +22,10 @@ public class KeyDataPair {
 	/**
 	 * Creates a new key-data pair with the given key and data.
 	 * 
-	 * @param key The key.
-	 * @param data The data.
+	 * @param key
+	 *            The key.
+	 * @param data
+	 *            The data.
 	 */
 	public KeyDataPair(KeyPair key, byte[] data) {
 		Objects.requireNonNull(key, "key must not be null.");
