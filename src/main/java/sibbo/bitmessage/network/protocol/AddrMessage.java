@@ -19,8 +19,7 @@ import sibbo.bitmessage.Options;
  * 
  */
 public class AddrMessage extends P2PMessage {
-	private static final Logger LOG = Logger.getLogger(AddrMessage.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(AddrMessage.class.getName());
 
 	/** The command string for this message type. */
 	public static final String COMMAND = "addr";
@@ -31,44 +30,42 @@ public class AddrMessage extends P2PMessage {
 	/**
 	 * Creates a new add message.
 	 * 
-	 * @param addresses The address list.
+	 * @param addresses
+	 *            The address list.
 	 */
-	public AddrMessage(Collection<? extends NetworkAddressMessage> addresses) {
+	public AddrMessage(Collection<? extends NetworkAddressMessage> addresses, MessageFactory factory) {
+		super(factory);
+
 		Objects.requireNonNull(addresses, "addresses must not be null.");
 
-		if (addresses.size() > Options.getInstance().getInt(
-				"protocol.maxAddrLength")) {
-			throw new IllegalArgumentException("Too much addresses: "
-					+ addresses.size());
+		if (addresses.size() > Options.getInstance().getInt("protocol.maxAddrLength")) {
+			throw new IllegalArgumentException("Too much addresses: " + addresses.size());
 		}
 
 		this.addresses = new ArrayList<>(addresses);
 	}
 
 	/**
-	 * @link {@link Message#Message(InputBuffer)}
+	 * @link {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public AddrMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public AddrMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
-		VariableLengthIntegerMessage vLength = new VariableLengthIntegerMessage(
-				b);
+		VariableLengthIntegerMessage vLength = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vLength.length());
 		long length = vLength.getLong();
 
-		if (length > Options.getInstance().getInt("protocol.maxAddrLength")
-				|| length < 0) {
-			throw new ParsingException("Addr message too long: " + length
-					+ " addresses");
+		if (length > Options.getInstance().getInt("protocol.maxAddrLength") || length < 0) {
+			throw new ParsingException("Addr message too long: " + length + " addresses");
 		}
 
 		addresses = new ArrayList<NetworkAddressMessage>((int) length);
 
 		for (int i = 0; i < length; i++) {
-			NetworkAddressMessage nam = new NetworkAddressMessage(b);
+			NetworkAddressMessage nam = getMessageFactory().parseNetworkAddressMessage(b);
 			addresses.add(nam);
 			b = b.getSubBuffer(nam.length());
 		}
@@ -79,8 +76,7 @@ public class AddrMessage extends P2PMessage {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
 		try {
-			b.write(new VariableLengthIntegerMessage(addresses.size())
-					.getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(addresses.size()).getBytes());
 
 			for (NetworkAddressMessage addr : addresses) {
 				b.write(addr.getBytes());

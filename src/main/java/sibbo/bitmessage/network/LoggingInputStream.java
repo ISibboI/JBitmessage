@@ -15,8 +15,7 @@ import java.util.logging.Logger;
  * @version 1.0
  */
 public class LoggingInputStream extends InputStream {
-	private static final Logger LOG = Logger.getLogger(LoggingInputStream.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(LoggingInputStream.class.getName());
 
 	private InputStream in;
 

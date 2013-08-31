@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.bouncycastle.jce.provider.JCEECPublicKey;
+import org.bouncycastle.jce.interfaces.ECPublicKey;
 
 import sibbo.bitmessage.crypt.BMAddress;
 import sibbo.bitmessage.crypt.CryptManager;
@@ -17,8 +17,8 @@ import sibbo.bitmessage.crypt.CryptManager;
  * @version 1.0
  * 
  */
-public class UnencryptedMessageDataMessage extends Message {
-	private static final Logger LOG = Logger.getLogger(UnencryptedMessageDataMessage.class.getName());
+public class UnencryptedMsgMessage extends Message {
+	private static final Logger LOG = Logger.getLogger(UnencryptedMsgMessage.class.getName());
 
 	/** This class implements version 1 messages. */
 	public static final long MESSAGE_VERSION = 1;
@@ -33,10 +33,10 @@ public class UnencryptedMessageDataMessage extends Message {
 	private BehaviorMessage behavior;
 
 	/** The ECC public key of the sender used for signing. */
-	private JCEECPublicKey publicSigningKey;
+	private ECPublicKey publicSigningKey;
 
 	/** The ECC public key of the sender used for encryption. */
-	private JCEECPublicKey publicEncryptionKey;
+	private ECPublicKey publicEncryptionKey;
 
 	/** The ripe hash of the public key of the receiver of the message. */
 	private byte[] destinationRipe;
@@ -49,6 +49,13 @@ public class UnencryptedMessageDataMessage extends Message {
 
 	/** The ECDSA signature */
 	private byte[] signature;
+
+	/**
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
+	 */
+	public UnencryptedMsgMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
+	}
 
 	/**
 	 * Creates a new unencrypted message data message with the given parameters.
@@ -70,9 +77,11 @@ public class UnencryptedMessageDataMessage extends Message {
 	 * @param acknowledgment
 	 *            The acknowledgment message.
 	 */
-	public UnencryptedMessageDataMessage(long addressVersion, long stream, BehaviorMessage behavior,
-			JCEECPublicKey publicSigningKey, JCEECPublicKey publicEncryptionKey, byte[] destinationRipe,
-			MailMessage message, BaseMessage acknowledgment) {
+	public UnencryptedMsgMessage(long addressVersion, long stream, BehaviorMessage behavior,
+			ECPublicKey publicSigningKey, ECPublicKey publicEncryptionKey, byte[] destinationRipe, MailMessage message,
+			BaseMessage acknowledgment, MessageFactory factory) {
+		super(factory);
+
 		this.addressVersion = addressVersion;
 		this.stream = stream;
 		this.behavior = behavior;
@@ -83,25 +92,90 @@ public class UnencryptedMessageDataMessage extends Message {
 		this.acknowledgment = acknowledgment;
 	}
 
-	/**
-	 * {@link Message#Message(InputBuffer)}
-	 */
-	public UnencryptedMessageDataMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public BaseMessage getAcknowledgment() {
+		return acknowledgment;
+	}
+
+	public long getAddressVersion() {
+		return addressVersion;
+	}
+
+	public BehaviorMessage getBehavior() {
+		return behavior;
+	}
+
+	@Override
+	public byte[] getBytes() {
+		ByteArrayOutputStream b = new ByteArrayOutputStream();
+
+		try {
+			b.write(getBytesWithoutSignature());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(signature.length).getBytes());
+			b.write(signature);
+		} catch (IOException e) {
+			LOG.log(Level.SEVERE, "Could not write bytes!", e);
+			System.exit(1);
+		}
+
+		return b.toByteArray();
+	}
+
+	private byte[] getBytesWithoutSignature() {
+		ByteArrayOutputStream b = new ByteArrayOutputStream();
+
+		try {
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(MESSAGE_VERSION).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(addressVersion).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(stream).getBytes());
+			b.write(behavior.getBytes());
+			b.write(Util.getBytes(publicSigningKey));
+			b.write(Util.getBytes(publicEncryptionKey));
+			b.write(destinationRipe);
+			b.write(message.getBytes());
+
+			byte[] ack = acknowledgment.getBytes();
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(ack.length).getBytes());
+			b.write(ack);
+		} catch (IOException e) {
+			LOG.log(Level.SEVERE, "Could not write bytes!", e);
+			System.exit(1);
+		}
+
+		return b.toByteArray();
+	}
+
+	public byte[] getDestinationRipe() {
+		return destinationRipe;
+	}
+
+	public MailMessage getMessage() {
+		return message;
+	}
+
+	public ECPublicKey getPublicEncryptionKey() {
+		return publicEncryptionKey;
+	}
+
+	public ECPublicKey getPublicSigningKey() {
+		return publicSigningKey;
+	}
+
+	public long getStream() {
+		return stream;
 	}
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
 		InputBuffer signed = b.getSubBuffer(0);
 
-		VariableLengthIntegerMessage messageVersion = new VariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage messageVersion = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(messageVersion.length());
 
 		if (messageVersion.getLong() != MESSAGE_VERSION) {
 			throw new ParsingException("Cannot understand messages of version: " + messageVersion);
 		}
 
-		VariableLengthIntegerMessage vAddressVersion = new VariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage vAddressVersion = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vAddressVersion.length());
 		addressVersion = vAddressVersion.getLong();
 
@@ -109,11 +183,11 @@ public class UnencryptedMessageDataMessage extends Message {
 			throw new ParsingException("Unknown address version: " + addressVersion);
 		}
 
-		VariableLengthIntegerMessage vStream = new VariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage vStream = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vStream.length());
 		stream = vStream.getLong();
 
-		behavior = new BehaviorMessage(b);
+		behavior = getMessageFactory().parseBehaviorMessage(b);
 		b = b.getSubBuffer(behavior.length());
 
 		publicSigningKey = Util.getPublicKey(b.get(0, 64));
@@ -123,10 +197,10 @@ public class UnencryptedMessageDataMessage extends Message {
 		destinationRipe = b.get(84, 64);
 		b = b.getSubBuffer(148);
 
-		message = new MailMessage(b);
+		message = getMessageFactory().parseMailMessage(b);
 		b = b.getSubBuffer(message.length());
 
-		VariableLengthIntegerMessage vLength = new VariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage vLength = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vLength.length());
 		long length = vLength.getLong();
 
@@ -134,10 +208,11 @@ public class UnencryptedMessageDataMessage extends Message {
 			throw new ParsingException("The acknowlegment data is too long: " + length);
 		}
 
-		this.acknowledgment = new BaseMessage(new InputBufferInputStream(b.getSubBuffer(0, (int) length)), (int) length);
+		this.acknowledgment = getMessageFactory().parseBaseMessage(
+				new InputBufferInputStream(b.getSubBuffer(0, (int) length)), (int) length);
 		b = b.getSubBuffer((int) length);
 
-		vLength = new VariableLengthIntegerMessage(b);
+		vLength = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vLength.length());
 		length = vLength.getLong();
 
@@ -151,77 +226,5 @@ public class UnencryptedMessageDataMessage extends Message {
 				publicSigningKey)) {
 			throw new ParsingException("Wrong signature.");
 		}
-	}
-
-	private byte[] getBytesWithoutSignature() {
-		ByteArrayOutputStream b = new ByteArrayOutputStream();
-
-		try {
-			b.write(new VariableLengthIntegerMessage(MESSAGE_VERSION).getBytes());
-			b.write(new VariableLengthIntegerMessage(addressVersion).getBytes());
-			b.write(new VariableLengthIntegerMessage(stream).getBytes());
-			b.write(behavior.getBytes());
-			b.write(Util.getBytes(publicSigningKey));
-			b.write(Util.getBytes(publicEncryptionKey));
-			b.write(destinationRipe);
-			b.write(message.getBytes());
-
-			byte[] ack = acknowledgment.getBytes();
-			b.write(new VariableLengthIntegerMessage(ack.length).getBytes());
-			b.write(ack);
-		} catch (IOException e) {
-			LOG.log(Level.SEVERE, "Could not write bytes!", e);
-			System.exit(1);
-		}
-
-		return b.toByteArray();
-	}
-
-	@Override
-	public byte[] getBytes() {
-		ByteArrayOutputStream b = new ByteArrayOutputStream();
-
-		try {
-			b.write(getBytesWithoutSignature());
-			b.write(new VariableLengthIntegerMessage(signature.length).getBytes());
-			b.write(signature);
-		} catch (IOException e) {
-			LOG.log(Level.SEVERE, "Could not write bytes!", e);
-			System.exit(1);
-		}
-
-		return b.toByteArray();
-	}
-
-	public long getAddressVersion() {
-		return addressVersion;
-	}
-
-	public long getStream() {
-		return stream;
-	}
-
-	public BehaviorMessage getBehavior() {
-		return behavior;
-	}
-
-	public JCEECPublicKey getPublicSigningKey() {
-		return publicSigningKey;
-	}
-
-	public JCEECPublicKey getPublicEncryptionKey() {
-		return publicEncryptionKey;
-	}
-
-	public byte[] getDestinationRipe() {
-		return destinationRipe;
-	}
-
-	public MailMessage getMessage() {
-		return message;
-	}
-
-	public BaseMessage getAcknowledgment() {
-		return acknowledgment;
 	}
 }

@@ -15,8 +15,7 @@ import sibbo.bitmessage.crypt.Digest;
  * @version 1.0
  */
 public abstract class POWMessage extends P2PMessage {
-	private static final Logger LOG = Logger.getLogger(POWMessage.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(POWMessage.class.getName());
 
 	/** The proof of work nonce. Null if the pow has not been done. */
 	private byte[] nonce;
@@ -27,19 +26,22 @@ public abstract class POWMessage extends P2PMessage {
 	/** Caches the byte representation of the payload. */
 	private byte[] payloadBytes;
 
-	public POWMessage() {
+	/**
+	 * {@link Message#Message(MessageFactory)}
+	 */
+	public POWMessage(MessageFactory factory) {
+		super(factory);
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public POWMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public POWMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override
-	protected final void read(InputBuffer b) throws IOException,
-			ParsingException {
+	protected final void read(InputBuffer b) throws IOException, ParsingException {
 		nonce = b.get(0, 8);
 		time = Util.getInt(b.get(8, 4));
 
@@ -53,12 +55,14 @@ public abstract class POWMessage extends P2PMessage {
 	/**
 	 * Initializes the message reading the data from the input buffer.
 	 * 
-	 * @param b The input buffer to read from, must not contain POW.
-	 * @throws IOException If reading from the given input buffer fails.
-	 * @throws ParsingException If parsing the data fails.
+	 * @param b
+	 *            The input buffer to read from, must not contain POW.
+	 * @throws IOException
+	 *             If reading from the given input buffer fails.
+	 * @throws ParsingException
+	 *             If parsing the data fails.
 	 */
-	protected abstract void readPayload(InputBuffer b) throws IOException,
-			ParsingException;
+	protected abstract void readPayload(InputBuffer b) throws IOException, ParsingException;
 
 	@Override
 	public final byte[] getBytes() {
@@ -135,6 +139,6 @@ public abstract class POWMessage extends P2PMessage {
 	 * @return The inventory vector describing this message.
 	 */
 	public InventoryVectorMessage getInventoryVector() {
-		return new InventoryVectorMessage(getHash());
+		return getMessageFactory().createInventoryVectorMessage(getHash());
 	}
 }

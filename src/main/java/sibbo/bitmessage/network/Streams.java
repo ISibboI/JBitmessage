@@ -19,7 +19,8 @@ public final class Streams {
 	 * Returns an array containing the given stream and its parent and child
 	 * streams.
 	 * 
-	 * @param stream A stream.
+	 * @param stream
+	 *            A stream.
 	 * @return The perimeter of the given stream.
 	 */
 	public static long[] getPerimeter(long stream) {
@@ -38,8 +39,10 @@ public final class Streams {
 	/**
 	 * Returns a long[] containing a path from startStream to targetStream.
 	 * 
-	 * @param startStream The start stream.
-	 * @param targetStream The target stream.
+	 * @param startStream
+	 *            The start stream.
+	 * @param targetStream
+	 *            The target stream.
 	 * @return A long[] containing a path from startStream to targetStream.
 	 */
 	public static long[] getPath(long startStream, long targetStream) {

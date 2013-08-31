@@ -24,6 +24,7 @@ import sibbo.bitmessage.network.protocol.BaseMessage;
 import sibbo.bitmessage.network.protocol.GetdataMessage;
 import sibbo.bitmessage.network.protocol.InvMessage;
 import sibbo.bitmessage.network.protocol.InventoryVectorMessage;
+import sibbo.bitmessage.network.protocol.MessageFactory;
 import sibbo.bitmessage.network.protocol.NetworkAddressMessage;
 import sibbo.bitmessage.network.protocol.NodeServicesMessage;
 import sibbo.bitmessage.network.protocol.P2PMessage;
@@ -54,28 +55,28 @@ public class Connection implements Runnable {
 	private Agenda agenda;
 
 	/** The remote address. */
-	private InetAddress address;
+	private final InetAddress address;
 
 	/** The remote port. */
-	private int port;
+	private final int port;
 
 	/** The streams to follow. */
-	private long[] streams;
+	private final long[] streams;
 
 	/** The streams the remote nodes follows. */
 	private long[] remoteStreams;
 
 	/** The listener to inform if something happens. */
-	private ConnectionListener listener;
+	private final ConnectionListener listener;
 
 	/** Holds hashes of objects that should be advertised as soon as possible. */
-	private Queue<InventoryVectorMessage> invBuffer = new LinkedList<>();
+	private final Queue<InventoryVectorMessage> invBuffer = new LinkedList<>();
 
 	/** Nodes that should be advertised. */
-	private Queue<NetworkAddressMessage> nodeBuffer = new LinkedList<>();
+	private final Queue<NetworkAddressMessage> nodeBuffer = new LinkedList<>();
 
 	/** Holds hashes of objects that should be requested. */
-	private Queue<InventoryVectorMessage> requestBuffer = new LinkedList<>();
+	private final Queue<InventoryVectorMessage> requestBuffer = new LinkedList<>();
 
 	/** If true, the connection is aborted as fast as possible. */
 	private volatile boolean stop = false;
@@ -93,16 +94,19 @@ public class Connection implements Runnable {
 	private boolean localVerified = false;
 
 	/** Random nonce to detect connections to self. */
-	private long nonce;
+	private final long nonce;
 
 	/**
 	 * True if this connection acts as a client, meaning that it sends its
 	 * version first.
 	 */
-	private boolean client;
+	private final boolean client;
 
 	/** True if all initially known addresses have been sent. */
 	private boolean addrSent;
+
+	/** The factory used to parse and create messages. */
+	private MessageFactory factory;
 
 	/** The datastore that stores the nodes and objects for this node. */
 	private Datastore datastore;
@@ -172,6 +176,27 @@ public class Connection implements Runnable {
 	}
 
 	/**
+	 * Schedules the advertising of all given nodes. If the agenda of this
+	 * connection is FIND_STREAM, this method does nothing.
+	 * 
+	 * @param c
+	 *            The nodes to advertise.
+	 */
+	public void advertiseNodes(Collection<? extends NetworkAddressMessage> c) {
+		if (agenda != Agenda.FIND_STREAM) {
+			synchronized (nodeBuffer) {
+				nodeBuffer.addAll(c);
+			}
+		}
+	}
+
+	public void advertiseObject(InventoryVectorMessage inventoryVector) {
+		synchronized (invBuffer) {
+			invBuffer.add(inventoryVector);
+		}
+	}
+
+	/**
 	 * Schedules the advertising of all given objects. If the agenda of this
 	 * connection is FIND_STREAM, this method does nothing.
 	 * 
@@ -186,18 +211,59 @@ public class Connection implements Runnable {
 		}
 	}
 
-	/**
-	 * Schedules the advertising of all given nodes. If the agenda of this
-	 * connection is FIND_STREAM, this method does nothing.
-	 * 
-	 * @param c
-	 *            The nodes to advertise.
-	 */
-	public void advertiseNodes(Collection<? extends NetworkAddressMessage> c) {
-		if (agenda != Agenda.FIND_STREAM) {
-			synchronized (nodeBuffer) {
-				nodeBuffer.addAll(c);
-			}
+	private void close(Socket s) {
+		try {
+			s.close();
+		} catch (IOException e) {
+			LOG.log(Level.WARNING, "Could not close socket.", e);
+		}
+	}
+
+	public InetAddress getAddress() {
+		return address;
+	}
+
+	public int getPort() {
+		return port;
+	}
+
+	private void receiveAddr(AddrMessage m, OutputStream out) throws IOException {
+		listener.receivedNodes(m.getAddresses(), this);
+	}
+
+	private void receiveGetdata(GetdataMessage m, OutputStream out) throws IOException {
+		List<POWMessage> objects = datastore.getObjects(m.getInventoryVectors());
+
+		for (POWMessage object : objects) {
+			out.write(new BaseMessage(object, factory).getBytes());
+		}
+	}
+
+	private void receiveInv(InvMessage m, OutputStream out) throws IOException {
+		listener.advertisedObjects(m.getInventoryVectors(), this);
+	}
+
+	private void receiveVerack(VerackMessage m, OutputStream out) {
+		localVerified = true;
+	}
+
+	private void receiveVersion(VersionMessage m, OutputStream out) throws IOException {
+		VersionMessage version = m;
+		LOG.log(Level.INFO, "Remote user agent: " + version.getUserAgent());
+
+		if (version.getNonce() == nonce) {
+			LOG.log(Level.WARNING, "Connected to self!");
+			close(s);
+			listener.connectionAborted(this);
+		}
+
+		remoteStreams = version.getStreams();
+
+		sendVerack(out);
+		remoteVerified = true;
+
+		if (!client) {
+			sendVersion(out);
 		}
 	}
 
@@ -216,23 +282,12 @@ public class Connection implements Runnable {
 		}
 	}
 
-	/**
-	 * Starts this connection.
-	 */
-	private synchronized void start() {
-		if (running) {
-			throw new IllegalStateException("This connection is already started.");
-		} else {
-			running = true;
-		}
-
-		new Thread(this, "Connection: " + address.getHostAddress() + ":" + port).start();
-	}
-
 	@Override
 	public void run() {
 		InputStream in;
 		OutputStream out;
+
+		factory = MessageFactory.getFactoryByVersion(Options.getInstance().getInt("protocol.version"));
 
 		// If there is no connection, connect.
 		if (s == null) {
@@ -282,7 +337,7 @@ public class Connection implements Runnable {
 				BaseMessage b = null;
 
 				try {
-					b = new BaseMessage(in, Options.getInstance().getInt("protocol.maxMessageLength"));
+					b = factory.parseBaseMessage(in, Options.getInstance().getInt("protocol.maxMessageLength"));
 				} catch (SocketTimeoutException e) {
 					sendMessages(out);
 					continue;
@@ -344,23 +399,47 @@ public class Connection implements Runnable {
 		listener.connectionAborted(this);
 	}
 
-	private void receiveGetdata(GetdataMessage m, OutputStream out) throws IOException {
-		List<POWMessage> objects = datastore.getObjects(m.getInventoryVectors());
+	private void sendAddr(ArrayList<NetworkAddressMessage> toSend, OutputStream out) throws IOException {
+		out.write(factory.createBaseMessage(factory.createAddrMessage(toSend)).getBytes());
 
-		for (POWMessage object : objects) {
-			out.write(new BaseMessage(object).getBytes());
+		LOG.fine("Sent: addr (" + toSend.size() + ")");
+	}
+
+	private void sendAddr(OutputStream out) throws IOException {
+		if (addrSent) {
+			return;
+		} else {
+			addrSent = true;
+		}
+
+		List<NetworkAddressMessage> addresses = datastore.getNodes(remoteStreams);
+
+		while (!addresses.isEmpty()) {
+			List<NetworkAddressMessage> tmp = new ArrayList<>(1000);
+
+			for (int i = 0; i < 1000 && !addresses.isEmpty(); i++) {
+				tmp.add(addresses.get(addresses.size() - 1));
+			}
+
+			AddrMessage addr = factory.createAddrMessage(tmp);
+			BaseMessage b = factory.createBaseMessage(addr);
+			out.write(b.getBytes());
+
+			LOG.fine("Sent: addr (" + tmp.size() + ")");
 		}
 	}
 
-	private void receiveInv(InvMessage m, OutputStream out) throws IOException {
-		listener.advertisedObjects(m.getInventoryVectors(), this);
-	}
-
 	private void sendGetdata(List<InventoryVectorMessage> toSend, OutputStream out) throws IOException {
-		GetdataMessage m = new GetdataMessage(toSend);
-		BaseMessage b = new BaseMessage(m);
+		GetdataMessage m = factory.createGetdataMessage(toSend);
+		BaseMessage b = factory.createBaseMessage(m);
 		out.write(b.getBytes());
 		LOG.fine("Sent: getdata (" + toSend.size() + ")");
+	}
+
+	private void sendInv(ArrayList<InventoryVectorMessage> toSend, OutputStream out) throws IOException {
+		out.write(factory.createBaseMessage(factory.createInvMessage(toSend)).getBytes());
+
+		LOG.fine("Sent: inv (" + toSend.size() + ")");
 	}
 
 	private void sendMessages(OutputStream out) throws IOException {
@@ -422,86 +501,25 @@ public class Connection implements Runnable {
 		}
 	}
 
-	private void sendAddr(ArrayList<NetworkAddressMessage> toSend, OutputStream out) throws IOException {
-		out.write(new BaseMessage(new AddrMessage(toSend)).getBytes());
-
-		LOG.fine("Sent: addr (" + toSend.size() + ")");
-	}
-
-	private void sendInv(ArrayList<InventoryVectorMessage> toSend, OutputStream out) throws IOException {
-		out.write(new BaseMessage(new InvMessage(toSend)).getBytes());
-
-		LOG.fine("Sent: inv (" + toSend.size() + ")");
-	}
-
-	private void receiveAddr(AddrMessage m, OutputStream out) throws IOException {
-		listener.receivedNodes(m.getAddresses(), this);
-	}
-
-	private void sendAddr(OutputStream out) throws IOException {
-		if (addrSent) {
-			return;
-		} else {
-			addrSent = true;
-		}
-
-		List<NetworkAddressMessage> addresses = datastore.getNodes(remoteStreams);
-
-		while (!addresses.isEmpty()) {
-			List<NetworkAddressMessage> tmp = new ArrayList<>(1000);
-
-			for (int i = 0; i < 1000 && !addresses.isEmpty(); i++) {
-				tmp.add(addresses.get(addresses.size() - 1));
-			}
-
-			AddrMessage addr = new AddrMessage(tmp);
-			BaseMessage b = new BaseMessage(addr);
-			out.write(b.getBytes());
-
-			LOG.fine("Sent: addr (" + tmp.size() + ")");
-		}
-	}
-
-	private void receiveVerack(VerackMessage m, OutputStream out) {
-		localVerified = true;
-	}
-
-	private void receiveVersion(VersionMessage m, OutputStream out) throws IOException {
-		VersionMessage version = m;
-		LOG.log(Level.INFO, "Remote user agent: " + version.getUserAgent());
-
-		if (version.getNonce() == nonce) {
-			LOG.log(Level.WARNING, "Connected to self!");
-			close(s);
-			listener.connectionAborted(this);
-		}
-
-		remoteStreams = version.getStreams();
-
-		sendVerack(out);
-		remoteVerified = true;
-
-		if (!client) {
-			sendVersion(out);
-		}
-	}
-
 	private void sendVerack(OutputStream out) throws IOException {
-		out.write(new BaseMessage(new VerackMessage()).getBytes());
+		out.write(factory.createBaseMessage(factory.createVerackMessage()).getBytes());
 		LOG.fine("Sent: verack");
 	}
 
 	private void sendVersion(OutputStream out) throws IOException {
 		try {
-			NodeServicesMessage services = new NodeServicesMessage(Options.getInstance().getLong("protocol.services"));
-			SimpleNetworkAddressMessage receiver = new SimpleNetworkAddressMessage(new NodeServicesMessage(Options
-					.getInstance().getLong("protocol.remoteServices")), address, port);
-			SimpleNetworkAddressMessage sender = new SimpleNetworkAddressMessage(services,
+
+			NodeServicesMessage services = factory.createNodeServicesMessage(Options.getInstance().getLong(
+					"protocol.services"));
+			SimpleNetworkAddressMessage receiver = factory.createSimpleNetworkAddressMessage(
+					factory.createNodeServicesMessage(Options.getInstance().getLong("protocol.remoteServices")),
+					address, port);
+			SimpleNetworkAddressMessage sender = factory.createSimpleNetworkAddressMessage(services,
 					InetAddress.getByName("127.0.0.1"), Options.getInstance().getInt("network.listenPort"));
 
-			VersionMessage version = new VersionMessage(services, System.currentTimeMillis() / 1000, receiver, sender,
-					nonce, Options.getInstance().getString("network.userAgent"), streams);
-			BaseMessage m = new BaseMessage(version);
+			VersionMessage version = factory.createVersionMessage(services, System.currentTimeMillis() / 1000,
+					receiver, sender, nonce, Options.getInstance().getString("network.userAgent"), streams);
+			BaseMessage m = factory.createBaseMessage(version);
 
 			out.write(m.getBytes());
 			LOG.fine("Sent: version");
@@ -511,20 +529,17 @@ public class Connection implements Runnable {
 		}
 	}
 
-	private void close(Socket s) {
-		try {
-			s.close();
-		} catch (IOException e) {
-			LOG.log(Level.WARNING, "Could not close socket.", e);
+	/**
+	 * Starts this connection.
+	 */
+	private synchronized void start() {
+		if (running) {
+			throw new IllegalStateException("This connection is already started.");
+		} else {
+			running = true;
 		}
-	}
 
-	public InetAddress getAddress() {
-		return address;
-	}
-
-	public int getPort() {
-		return port;
+		new Thread(this, "Connection: " + address.getHostAddress() + ":" + port).start();
 	}
 
 	/**
@@ -532,11 +547,5 @@ public class Connection implements Runnable {
 	 */
 	public void stop() {
 		stop = true;
-	}
-
-	public void advertiseObject(InventoryVectorMessage inventoryVector) {
-		synchronized (invBuffer) {
-			invBuffer.add(inventoryVector);
-		}
 	}
 }

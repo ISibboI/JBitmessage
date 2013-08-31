@@ -63,7 +63,9 @@ public class VersionMessage extends P2PMessage {
 	 *            The streams the sender is interested in.
 	 */
 	public VersionMessage(NodeServicesMessage services, long timestamp, SimpleNetworkAddressMessage receiver,
-			SimpleNetworkAddressMessage sender, long nonce, String userAgent, long[] streams) {
+			SimpleNetworkAddressMessage sender, long nonce, String userAgent, long[] streams, MessageFactory factory) {
+		super(factory);
+
 		this.services = services;
 		this.timestamp = timestamp;
 		this.receiver = receiver;
@@ -102,10 +104,10 @@ public class VersionMessage extends P2PMessage {
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public VersionMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public VersionMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override
@@ -117,26 +119,26 @@ public class VersionMessage extends P2PMessage {
 			throw new ParsingException("Unsupported protocol version: " + version);
 		}
 
-		services = new NodeServicesMessage(b);
+		services = getMessageFactory().parseNodeServicesMessage(b);
 		b = b.getSubBuffer(services.length());
 
 		timestamp = Util.getLong(b.get(0, 8));
 		b = b.getSubBuffer(8);
 
-		receiver = new SimpleNetworkAddressMessage(b);
+		receiver = getMessageFactory().parseSimpleNetworkAddressMessage(b);
 		b = b.getSubBuffer(receiver.length());
 
-		sender = new SimpleNetworkAddressMessage(b);
+		sender = getMessageFactory().parseSimpleNetworkAddressMessage(b);
 		b = b.getSubBuffer(sender.length());
 
 		nonce = Util.getLong(b.get(0, 8));
 		b = b.getSubBuffer(8);
 
-		VariableLengthStringMessage vUserAgent = new VariableLengthStringMessage(b);
+		VariableLengthStringMessage vUserAgent = getMessageFactory().parseVariableLengthStringMessage(b);
 		b = b.getSubBuffer(vUserAgent.length());
 		userAgent = vUserAgent.getMessage();
 
-		streams = new VariableLengthIntegerListMessage(b).getContent();
+		streams = getMessageFactory().parseVariableLengthIntegerListMessage(b).getContent();
 	}
 
 	@Override
@@ -150,8 +152,8 @@ public class VersionMessage extends P2PMessage {
 			b.write(receiver.getBytes());
 			b.write(sender.getBytes());
 			b.write(Util.getBytes(nonce));
-			b.write(new VariableLengthStringMessage(userAgent).getBytes());
-			b.write(new VariableLengthIntegerListMessage(streams).getBytes());
+			b.write(getMessageFactory().createVariableLengthStringMessage(userAgent).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerListMessage(streams).getBytes());
 		} catch (IOException e) {
 			LOG.log(Level.SEVERE, "Could not write bytes!", e);
 			System.exit(1);

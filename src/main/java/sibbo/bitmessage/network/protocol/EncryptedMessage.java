@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Objects;
 
-import org.bouncycastle.jce.provider.JCEECPublicKey;
+import org.bouncycastle.jce.interfaces.ECPublicKey;
 
 import sibbo.bitmessage.crypt.CryptManager;
 
@@ -18,7 +18,7 @@ public class EncryptedMessage extends Message {
 	private byte[] iv;
 
 	/** The public key to generate the shared secret. */
-	private JCEECPublicKey publicKey;
+	private ECPublicKey publicKey;
 
 	/** The encrypted data. */
 	private byte[] encrypted;
@@ -38,7 +38,9 @@ public class EncryptedMessage extends Message {
 	 * @param mac
 	 *            The message authentication code. Must have a length of 32.
 	 */
-	public EncryptedMessage(byte[] iv, JCEECPublicKey publicKey, byte[] encrypted, byte[] mac) {
+	public EncryptedMessage(byte[] iv, ECPublicKey publicKey, byte[] encrypted, byte[] mac, MessageFactory factory) {
+		super(factory);
+
 		Objects.requireNonNull(iv, "'iv' must not be null.");
 		Objects.requireNonNull(publicKey, "'publicKey' must not be null.");
 		Objects.requireNonNull(encrypted, "'encrypted' must not be null.");
@@ -63,10 +65,42 @@ public class EncryptedMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public EncryptedMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public EncryptedMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
+	}
+
+	@Override
+	public byte[] getBytes() {
+		byte[] result = new byte[16 + 70 + encrypted.length + mac.length];
+
+		System.arraycopy(iv, 0, result, 0, 16);
+		System.arraycopy(Util.getBytes((short) 714), 0, result, 16, 2);
+		System.arraycopy(Util.getBytes((short) 32), 0, result, 18, 2);
+		System.arraycopy(Util.getUnsignedBytes(publicKey.getQ().getX().toBigInteger(), 32), 0, result, 20, 32);
+		System.arraycopy(Util.getBytes((short) 32), 0, result, 52, 2);
+		System.arraycopy(Util.getUnsignedBytes(publicKey.getQ().getY().toBigInteger(), 32), 0, result, 54, 32);
+		System.arraycopy(encrypted, 0, result, 86, encrypted.length);
+		System.arraycopy(mac, 0, result, result.length - 32, 32);
+
+		return result;
+	}
+
+	public byte[] getEncrypted() {
+		return encrypted;
+	}
+
+	public byte[] getIV() {
+		return iv;
+	}
+
+	public byte[] getMac() {
+		return mac;
+	}
+
+	public ECPublicKey getPublicKey() {
+		return publicKey;
 	}
 
 	@Override
@@ -101,37 +135,5 @@ public class EncryptedMessage extends Message {
 
 		encrypted = b.get(0, b.length() - 32);
 		mac = b.get(b.length() - 32, 32);
-	}
-
-	@Override
-	public byte[] getBytes() {
-		byte[] result = new byte[16 + 70 + encrypted.length + mac.length];
-
-		System.arraycopy(iv, 0, result, 0, 16);
-		System.arraycopy(Util.getBytes((short) 714), 0, result, 16, 2);
-		System.arraycopy(Util.getBytes((short) 32), 0, result, 18, 2);
-		System.arraycopy(Util.getUnsignedBytes(publicKey.getQ().getX().toBigInteger(), 32), 0, result, 20, 32);
-		System.arraycopy(Util.getBytes((short) 32), 0, result, 52, 2);
-		System.arraycopy(Util.getUnsignedBytes(publicKey.getQ().getY().toBigInteger(), 32), 0, result, 54, 32);
-		System.arraycopy(encrypted, 0, result, 86, encrypted.length);
-		System.arraycopy(mac, 0, result, result.length - 32, 32);
-
-		return result;
-	}
-
-	public byte[] getIV() {
-		return iv;
-	}
-
-	public JCEECPublicKey getPublicKey() {
-		return publicKey;
-	}
-
-	public byte[] getEncrypted() {
-		return encrypted;
-	}
-
-	public byte[] getMac() {
-		return mac;
 	}
 }

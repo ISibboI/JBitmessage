@@ -3,7 +3,7 @@ package sibbo.bitmessage.network.protocol;
 import java.math.BigInteger;
 import java.util.logging.Logger;
 
-import org.bouncycastle.jce.provider.JCEECPublicKey;
+import org.bouncycastle.jce.interfaces.ECPublicKey;
 
 import sibbo.bitmessage.crypt.CryptManager;
 
@@ -17,8 +17,15 @@ import sibbo.bitmessage.crypt.CryptManager;
 public final class Util {
 	private static final Logger LOG = Logger.getLogger(Util.class.getName());
 
-	/** Utility class */
-	private Util() {
+	public static byte[] getBytes(ECPublicKey publicKey) {
+		byte[] x = getUnsignedBytes(publicKey.getQ().getX().toBigInteger(), 32);
+		byte[] y = getUnsignedBytes(publicKey.getQ().getY().toBigInteger(), 32);
+		byte[] result = new byte[64];
+
+		System.arraycopy(x, 0, result, 0, 32);
+		System.arraycopy(y, 0, result, 32, 32);
+
+		return result;
 	}
 
 	/**
@@ -32,6 +39,20 @@ public final class Util {
 	 */
 	public static byte[] getBytes(int i) {
 		return new byte[] { (byte) (i >> 24), (byte) (i >> 16 & 0xFF), (byte) (i >> 8 & 0xFF), (byte) (i & 0xFF) };
+	}
+
+	/**
+	 * Returns a byte array containing the bytes of the given long in big endian
+	 * order.
+	 * 
+	 * @param l
+	 *            The long to convert.
+	 * @return A byte array containing the 4 bytes of the given long in big
+	 *         endian order.
+	 */
+	public static byte[] getBytes(long l) {
+		return new byte[] { (byte) (l >> 56), (byte) (l >> 48), (byte) (l >> 40), (byte) (l >> 32), (byte) (l >> 24),
+				(byte) (l >> 16 & 0xFF), (byte) (l >> 8 & 0xFF), (byte) (l & 0xFF) };
 	}
 
 	/**
@@ -66,20 +87,6 @@ public final class Util {
 	}
 
 	/**
-	 * Returns a byte array containing the bytes of the given long in big endian
-	 * order.
-	 * 
-	 * @param l
-	 *            The long to convert.
-	 * @return A byte array containing the 4 bytes of the given long in big
-	 *         endian order.
-	 */
-	public static byte[] getBytes(long l) {
-		return new byte[] { (byte) (l >> 56), (byte) (l >> 48), (byte) (l >> 40), (byte) (l >> 32), (byte) (l >> 24),
-				(byte) (l >> 16 & 0xFF), (byte) (l >> 8 & 0xFF), (byte) (l & 0xFF) };
-	}
-
-	/**
 	 * Returns a long created from the given bytes.
 	 * 
 	 * @param b
@@ -101,6 +108,28 @@ public final class Util {
 		return l;
 	}
 
+	public static ECPublicKey getPublicKey(byte[] b) {
+		if (b.length != 64) {
+			throw new IllegalArgumentException("Need exactly 64 bytes, but have " + b.length + ".");
+		}
+
+		BigInteger x = getUnsignedBigInteger(b, 0, 32);
+		BigInteger y = getUnsignedBigInteger(b, 32, 32);
+
+		return CryptManager.getInstance().createPublicEncryptionKey(x, y);
+	}
+
+	/**
+	 * Returns a short created from the given bytes.
+	 * 
+	 * @param b
+	 *            The byte data in big endian order.
+	 * @return A short created from the given bytes.
+	 */
+	public static short getShort(byte[] b) {
+		return getShort(b, 0);
+	}
+
 	/**
 	 * Returns a short created from the given bytes.
 	 * 
@@ -117,17 +146,6 @@ public final class Util {
 		s |= (b[offset + 1] & 0xFF);
 
 		return s;
-	}
-
-	/**
-	 * Returns a short created from the given bytes.
-	 * 
-	 * @param b
-	 *            The byte data in big endian order.
-	 * @return A short created from the given bytes.
-	 */
-	public static short getShort(byte[] b) {
-		return getShort(b, 0);
 	}
 
 	/**
@@ -181,25 +199,7 @@ public final class Util {
 		return result;
 	}
 
-	public static byte[] getBytes(JCEECPublicKey publicSigningKey) {
-		byte[] x = getUnsignedBytes(publicSigningKey.getQ().getX().toBigInteger(), 32);
-		byte[] y = getUnsignedBytes(publicSigningKey.getQ().getY().toBigInteger(), 32);
-		byte[] result = new byte[64];
-
-		System.arraycopy(x, 0, result, 0, 32);
-		System.arraycopy(y, 0, result, 32, 32);
-
-		return result;
-	}
-
-	public static JCEECPublicKey getPublicKey(byte[] b) {
-		if (b.length != 64) {
-			throw new IllegalArgumentException("Need exactly 64 bytes, but have " + b.length + ".");
-		}
-
-		BigInteger x = getUnsignedBigInteger(b, 0, 32);
-		BigInteger y = getUnsignedBigInteger(b, 32, 32);
-
-		return CryptManager.getInstance().createPublicEncryptionKey(x, y);
+	/** Utility class */
+	private Util() {
 	}
 }

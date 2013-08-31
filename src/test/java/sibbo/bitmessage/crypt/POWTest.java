@@ -49,6 +49,26 @@ public class POWTest {
 
 	@Ignore
 	@Test
+	public void testShortMessageDuration() {
+		long start = System.currentTimeMillis();
+
+		for (int i = 0; i < CALCULATIONS; i++) {
+			Random r = new Random();
+			byte[] hash = new byte[64];
+			r.nextBytes(hash);
+
+			POWCalculator pow = new POWCalculator(CryptManager.getInstance().getPOWTarget(700), hash, 1);
+			pow.execute();
+		}
+
+		long end = System.currentTimeMillis();
+
+		Logger.getLogger(getClass().getName()).info(
+				"The calculation of " + CALCULATIONS + " POWs took " + (end - start) / CALCULATIONS + "ms on average.");
+	}
+
+	@Ignore
+	@Test
 	public void testSystemLoad() {
 		byte[] hash = new byte[64];
 		long[] calculationTimes = new long[100];

@@ -18,36 +18,40 @@ public interface ConnectionListener {
 	/**
 	 * The given connection was not able to connect to its target.
 	 * 
-	 * @param c A connection.
+	 * @param c
+	 *            A connection.
 	 */
 	void couldNotConnect(Connection c);
 
 	/**
 	 * The connection to the target was canceled.
 	 * 
-	 * @param c A connection.
+	 * @param c
+	 *            A connection.
 	 */
 	void connectionAborted(Connection c);
 
 	/**
 	 * The connection received a new object from its target.
 	 * 
-	 * @param m An object.
+	 * @param m
+	 *            An object.
 	 */
 	void receivedObject(POWMessage m, Connection c);
 
 	/**
 	 * The connection received a list of new nodes.
 	 * 
-	 * @param list A list of nodes.
+	 * @param list
+	 *            A list of nodes.
 	 */
 	void receivedNodes(List<NetworkAddressMessage> list, Connection c);
 
 	/**
 	 * The connection received a list of object hashes.
 	 * 
-	 * @param inventoryVectors A list of object hashes.
+	 * @param inventoryVectors
+	 *            A list of object hashes.
 	 */
-	void advertisedObjects(List<InventoryVectorMessage> inventoryVectors,
-			Connection c);
+	void advertisedObjects(List<InventoryVectorMessage> inventoryVectors, Connection c);
 }

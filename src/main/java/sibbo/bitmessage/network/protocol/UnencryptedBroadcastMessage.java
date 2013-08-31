@@ -7,7 +7,7 @@ import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.bouncycastle.jce.provider.JCEECPublicKey;
+import org.bouncycastle.jce.interfaces.ECPublicKey;
 
 import sibbo.bitmessage.crypt.CryptManager;
 import sibbo.bitmessage.crypt.Digest;
@@ -37,10 +37,10 @@ public class UnencryptedBroadcastMessage extends POWMessage {
 	private BehaviorMessage behavior;
 
 	/** The public signing key of the sender. */
-	private JCEECPublicKey publicSigningKey;
+	private ECPublicKey publicSigningKey;
 
 	/** The public encryption key of the sender. */
-	private JCEECPublicKey publicEncryptionKey;
+	private ECPublicKey publicEncryptionKey;
 
 	/** The ripe hash of the senders address. */
 	private byte[] ripe;
@@ -51,8 +51,17 @@ public class UnencryptedBroadcastMessage extends POWMessage {
 	/** The ECDSA signature of everything that is parsed by this class. */
 	private byte[] signature;
 
+	/**
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
+	 */
+	public UnencryptedBroadcastMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
+	}
+
 	public UnencryptedBroadcastMessage(long addressVersion, long stream, BehaviorMessage behavior,
-			JCEECPublicKey publicSigningKey, JCEECPublicKey publicEncryptionKey, MailMessage message) {
+			ECPublicKey publicSigningKey, ECPublicKey publicEncryptionKey, MailMessage message, MessageFactory factory) {
+		super(factory);
+
 		Objects.requireNonNull(behavior, "behavior must not be null.");
 		Objects.requireNonNull(publicSigningKey, "publicSigningKey must not be null.");
 		Objects.requireNonNull(publicEncryptionKey, "publicEncryptionKey must not be null.");
@@ -66,65 +75,86 @@ public class UnencryptedBroadcastMessage extends POWMessage {
 		this.message = message;
 	}
 
-	/**
-	 * {@link Message#Message(InputBuffer)}
-	 */
-	public UnencryptedBroadcastMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
-	}
-
 	public long getAddressVersion() {
 		return addressVersion;
-	}
-
-	public long getStream() {
-		return stream;
 	}
 
 	public BehaviorMessage getBehavior() {
 		return behavior;
 	}
 
-	public JCEECPublicKey getPublicSigningKey() {
-		return publicSigningKey;
-	}
-
-	public JCEECPublicKey getPublicEncryptionKey() {
-		return publicEncryptionKey;
-	}
-
-	public byte[] getRipe() {
-		return ripe;
+	@Override
+	public String getCommand() {
+		return COMMAND;
 	}
 
 	public MailMessage getMessage() {
 		return message;
 	}
 
+	@Override
+	protected byte[] getPayloadBytes() {
+		ByteArrayOutputStream b = new ByteArrayOutputStream();
+
+		try {
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(BROADCAST_VERSION).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(addressVersion).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(stream).getBytes());
+			b.write(behavior.getBytes());
+			b.write(Util.getBytes(publicSigningKey));
+			b.write(Util.getBytes(publicEncryptionKey));
+			b.write(ripe);
+			b.write(message.getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(signature.length).getBytes());
+			b.write(signature);
+		} catch (IOException e) {
+			LOG.log(Level.SEVERE, "Could not write bytes!", e);
+			System.exit(1);
+		}
+
+		return b.toByteArray();
+	}
+
+	public ECPublicKey getPublicEncryptionKey() {
+		return publicEncryptionKey;
+	}
+
+	public ECPublicKey getPublicSigningKey() {
+		return publicSigningKey;
+	}
+
+	public byte[] getRipe() {
+		return ripe;
+	}
+
 	public byte[] getSignature() {
 		return signature;
+	}
+
+	public long getStream() {
+		return stream;
 	}
 
 	@Override
 	protected void readPayload(InputBuffer b) throws IOException, ParsingException {
 		InputBuffer signed = b.getSubBuffer(0);
 
-		VariableLengthIntegerMessage v = new VariableLengthIntegerMessage(b);
+		VariableLengthIntegerMessage v = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 
 		if (BROADCAST_VERSION != v.getLong()) {
 			throw new ParsingException("Unknown broadcast message version: " + v.getLong());
 		}
 
-		v = new VariableLengthIntegerMessage(b);
+		v = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		addressVersion = v.getLong();
 
-		v = new VariableLengthIntegerMessage(b);
+		v = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		stream = v.getLong();
 
-		behavior = new BehaviorMessage(b);
+		behavior = getMessageFactory().parseBehaviorMessage(b);
 		b = b.getSubBuffer(behavior.length());
 
 		publicSigningKey = Util.getPublicKey(b.get(0, 64));
@@ -136,10 +166,10 @@ public class UnencryptedBroadcastMessage extends POWMessage {
 			throw new ParsingException("The hash of the public keys is incorrect.");
 		}
 
-		message = new MailMessage(b);
+		message = getMessageFactory().parseMailMessage(b);
 		b = b.getSubBuffer(message.length());
 
-		v = new VariableLengthIntegerMessage(b);
+		v = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		long length = v.getLong();
 
@@ -153,33 +183,5 @@ public class UnencryptedBroadcastMessage extends POWMessage {
 				publicSigningKey)) {
 			throw new ParsingException("Wrong signature.");
 		}
-	}
-
-	@Override
-	protected byte[] getPayloadBytes() {
-		ByteArrayOutputStream b = new ByteArrayOutputStream();
-
-		try {
-			b.write(new VariableLengthIntegerMessage(BROADCAST_VERSION).getBytes());
-			b.write(new VariableLengthIntegerMessage(addressVersion).getBytes());
-			b.write(new VariableLengthIntegerMessage(stream).getBytes());
-			b.write(behavior.getBytes());
-			b.write(Util.getBytes(publicSigningKey));
-			b.write(Util.getBytes(publicEncryptionKey));
-			b.write(ripe);
-			b.write(message.getBytes());
-			b.write(new VariableLengthIntegerMessage(signature.length).getBytes());
-			b.write(signature);
-		} catch (IOException e) {
-			LOG.log(Level.SEVERE, "Could not write bytes!", e);
-			System.exit(1);
-		}
-
-		return b.toByteArray();
-	}
-
-	@Override
-	public String getCommand() {
-		return COMMAND;
 	}
 }

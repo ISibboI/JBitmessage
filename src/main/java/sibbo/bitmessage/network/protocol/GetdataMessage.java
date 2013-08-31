@@ -17,8 +17,7 @@ import sibbo.bitmessage.Options;
  * @version 1.0
  */
 public class GetdataMessage extends P2PMessage {
-	private static final Logger LOG = Logger.getLogger(InvMessage.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(InvMessage.class.getName());
 
 	/** The command string for this message type. */
 	public static final String COMMAND = "getdata";
@@ -29,10 +28,20 @@ public class GetdataMessage extends P2PMessage {
 	/**
 	 * Creates a new getdata message with the given inventory vectors.
 	 * 
-	 * @param inv The inventory vectors.
+	 * @param inv
+	 *            The inventory vectors.
 	 */
-	public GetdataMessage(Collection<? extends InventoryVectorMessage> inv) {
+	public GetdataMessage(Collection<? extends InventoryVectorMessage> inv, MessageFactory factory) {
+		super(factory);
+
 		this.inv = new ArrayList<>(inv);
+	}
+
+	/**
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
+	 */
+	public GetdataMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override
@@ -42,21 +51,18 @@ public class GetdataMessage extends P2PMessage {
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
-		VariableLengthIntegerMessage vLength = new VariableLengthIntegerMessage(
-				b);
+		VariableLengthIntegerMessage vLength = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(vLength.length());
 		long length = vLength.getLong();
 
-		if (length < 0
-				|| length > Options.getInstance().getInt(
-						"protocol.maxInvLength")) {
+		if (length < 0 || length > Options.getInstance().getInt("protocol.maxInvLength")) {
 			throw new ParsingException("Too much inventory vectors: " + length);
 		}
 
 		inv = new ArrayList<>((int) length);
 
 		for (int i = 0; i < length; i++) {
-			InventoryVectorMessage ivm = new InventoryVectorMessage(b);
+			InventoryVectorMessage ivm = getMessageFactory().parseInventoryVectorMessage(b);
 			inv.add(ivm);
 			b = b.getSubBuffer(ivm.length());
 		}
@@ -67,7 +73,7 @@ public class GetdataMessage extends P2PMessage {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
 		try {
-			b.write(new VariableLengthIntegerMessage(inv.size()).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(inv.size()).getBytes());
 
 			for (InventoryVectorMessage m : inv) {
 				b.write(m.getBytes());

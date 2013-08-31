@@ -28,10 +28,10 @@ public class EncryptedMessageTest {
 
 		JCEECPublicKey key = (JCEECPublicKey) CryptManager.getInstance().generateEncryptionKeyPair().getPublic();
 
-		EncryptedMessage source = new EncryptedMessage(iv, key, encrypted, mac);
+		EncryptedMessage source = new EncryptedMessage(iv, key, encrypted, mac, new V1MessageFactory());
 		byte[] encoded = source.getBytes();
 		EncryptedMessage generated = new EncryptedMessage(new InputBuffer(new ByteArrayInputStream(encoded), 128,
-				encoded.length));
+				encoded.length), new V1MessageFactory());
 
 		assertTrue("The IVs don't match.", Arrays.equals(generated.getIV(), iv));
 		assertEquals("The keys don't match.", key, generated.getPublicKey());

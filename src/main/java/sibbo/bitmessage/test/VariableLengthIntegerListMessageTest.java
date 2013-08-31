@@ -6,18 +6,19 @@ import java.util.Arrays;
 import java.util.logging.Logger;
 
 import sibbo.bitmessage.network.protocol.InputBuffer;
+import sibbo.bitmessage.network.protocol.MessageFactory;
 import sibbo.bitmessage.network.protocol.ParsingException;
+import sibbo.bitmessage.network.protocol.V1MessageFactory;
 import sibbo.bitmessage.network.protocol.VariableLengthIntegerListMessage;
 
 public class VariableLengthIntegerListMessageTest {
-	private static final Logger LOG = Logger
-			.getLogger(VariableLengthIntegerListMessageTest.class.getName());
+	private static final Logger LOG = Logger.getLogger(VariableLengthIntegerListMessageTest.class.getName());
 
 	public static void main(String[] args) throws IOException, ParsingException {
+		MessageFactory factory = new V1MessageFactory();
 		long[] list = new long[] { -1, 0, 3, 0xfdffff, 1 };
 
-		VariableLengthIntegerListMessage a = new VariableLengthIntegerListMessage(
-				list);
+		VariableLengthIntegerListMessage a = new VariableLengthIntegerListMessage(list, factory);
 
 		// System.out.println("Byteslength: " + a.getBytes().length);
 		// System.out.print("Bytes:");
@@ -30,13 +31,11 @@ public class VariableLengthIntegerListMessageTest {
 		//
 		// System.out.println();
 
-		VariableLengthIntegerListMessage b = new VariableLengthIntegerListMessage(
-				new InputBuffer(new ByteArrayInputStream(a.getBytes()),
-						a.getBytes().length, a.getBytes().length));
+		VariableLengthIntegerListMessage b = new VariableLengthIntegerListMessage(new InputBuffer(
+				new ByteArrayInputStream(a.getBytes()), a.getBytes().length, a.getBytes().length), factory);
 
 		if (!Arrays.equals(list, b.getContent())) {
-			System.out.println("Different lists: " + Arrays.toString(list)
-					+ " != " + Arrays.toString(b.getContent()));
+			System.out.println("Different lists: " + Arrays.toString(list) + " != " + Arrays.toString(b.getContent()));
 		}
 
 		System.out.println("Finished");

@@ -16,8 +16,7 @@ import java.util.logging.Logger;
  * @version 1.0
  */
 public class SimpleNetworkAddressMessage extends Message {
-	private static final Logger LOG = Logger
-			.getLogger(NetworkAddressMessage.class.getName());
+	private static final Logger LOG = Logger.getLogger(NetworkAddressMessage.class.getName());
 
 	/** Bitfield of features that are enabled by this node. */
 	private NodeServicesMessage services;
@@ -31,22 +30,24 @@ public class SimpleNetworkAddressMessage extends Message {
 	/**
 	 * Creates a new network address message describing a node.
 	 * 
-	 * @param services The services the node has enabled.
-	 * @param ip The ip of the node.
-	 * @param port The port of the node.
+	 * @param services
+	 *            The services the node has enabled.
+	 * @param ip
+	 *            The ip of the node.
+	 * @param port
+	 *            The port of the node.
 	 */
-	public SimpleNetworkAddressMessage(NodeServicesMessage services,
-			InetAddress ip, int port) {
+	public SimpleNetworkAddressMessage(NodeServicesMessage services, InetAddress ip, int port, MessageFactory factory) {
+		super(factory);
+
 		Objects.requireNonNull(ip, "ip must not be null!");
 
 		if (port < 1 || port > 65535) {
-			throw new IllegalArgumentException(
-					"port must not be in range 1 - 65535");
+			throw new IllegalArgumentException("port must not be in range 1 - 65535");
 		}
 
 		if (!services.isSet(NodeServicesMessage.NODE_NETWORK)) {
-			throw new IllegalArgumentException(
-					"A node must have the NODE_NETWORK service enabled!");
+			throw new IllegalArgumentException("A node must have the NODE_NETWORK service enabled!");
 		}
 
 		this.services = services;
@@ -55,34 +56,30 @@ public class SimpleNetworkAddressMessage extends Message {
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public SimpleNetworkAddressMessage(InputBuffer b) throws IOException,
-			ParsingException {
-		super(b);
+	public SimpleNetworkAddressMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override
 	protected void read(InputBuffer b) throws IOException, ParsingException {
-		services = new NodeServicesMessage(b);
+		services = getMessageFactory().parseNodeServicesMessage(b);
 		b = b.getSubBuffer(services.length());
 
 		byte[] ipBytes = b.get(0, 16);
 
 		try {
 			if (isIpv4(ipBytes)) {
-				ip = InetAddress.getByAddress(Arrays.copyOfRange(ipBytes, 12,
-						16));
+				ip = InetAddress.getByAddress(Arrays.copyOfRange(ipBytes, 12, 16));
 			} else {
 				ip = InetAddress.getByAddress(ipBytes);
 			}
 		} catch (UnknownHostException e) {
 			if (isIpv4(ipBytes)) {
-				throw new ParsingException("Not an IP: "
-						+ Arrays.toString(Arrays.copyOfRange(ipBytes, 12, 16)));
+				throw new ParsingException("Not an IP: " + Arrays.toString(Arrays.copyOfRange(ipBytes, 12, 16)));
 			} else {
-				throw new ParsingException("Not an IP: "
-						+ Arrays.toString(ipBytes));
+				throw new ParsingException("Not an IP: " + Arrays.toString(ipBytes));
 			}
 		}
 
@@ -150,7 +147,8 @@ public class SimpleNetworkAddressMessage extends Message {
 	 * Returns true if the given 16 byte ip-address is an IPv4 address, false if
 	 * it is an IPv6 address.
 	 * 
-	 * @param ip An IPv6 address or v6 mapped v4 address.
+	 * @param ip
+	 *            An IPv6 address or v6 mapped v4 address.
 	 * @return True if the given 16 byte ip-address is an IPv4 address, false if
 	 *         it is an IPv6 address.
 	 */

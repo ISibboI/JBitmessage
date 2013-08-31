@@ -13,8 +13,7 @@ import java.util.logging.Logger;
  * @version 1.0
  */
 public class GetpubkeyMessage extends POWMessage {
-	private static final Logger LOG = Logger.getLogger(GetpubkeyMessage.class
-			.getName());
+	private static final Logger LOG = Logger.getLogger(GetpubkeyMessage.class.getName());
 
 	/** The command string for this message type. */
 	public static final String COMMAND = "getpubkey";
@@ -31,12 +30,18 @@ public class GetpubkeyMessage extends POWMessage {
 	/**
 	 * Creates a new getpubkey message.
 	 * 
-	 * @param time The time the message was sent.
-	 * @param addressVersion The version number of the requested address.
-	 * @param streamNumber The stream number of the requested address.
-	 * @param ripe The ripe hash of the requested address.
+	 * @param time
+	 *            The time the message was sent.
+	 * @param addressVersion
+	 *            The version number of the requested address.
+	 * @param streamNumber
+	 *            The stream number of the requested address.
+	 * @param ripe
+	 *            The ripe hash of the requested address.
 	 */
-	public GetpubkeyMessage(long addressVersion, long streamNumber, byte[] ripe) {
+	public GetpubkeyMessage(long addressVersion, long streamNumber, byte[] ripe, MessageFactory factory) {
+		super(factory);
+
 		Objects.requireNonNull(ripe, "ripe must not be null.");
 
 		if (ripe.length != 20) {
@@ -61,20 +66,19 @@ public class GetpubkeyMessage extends POWMessage {
 	}
 
 	/**
-	 * {@link Message#Message(InputBuffer)}
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
 	 */
-	public GetpubkeyMessage(InputBuffer b) throws IOException, ParsingException {
-		super(b);
+	public GetpubkeyMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
 	}
 
 	@Override
-	protected void readPayload(InputBuffer b) throws IOException,
-			ParsingException {
-		VariableLengthIntegerMessage v = new VariableLengthIntegerMessage(b);
+	protected void readPayload(InputBuffer b) throws IOException, ParsingException {
+		VariableLengthIntegerMessage v = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		addressVersion = v.getLong();
 
-		v = new VariableLengthIntegerMessage(b);
+		v = getMessageFactory().parseVariableLengthIntegerMessage(b);
 		b = b.getSubBuffer(v.length());
 		streamNumber = v.getLong();
 
@@ -86,8 +90,8 @@ public class GetpubkeyMessage extends POWMessage {
 		ByteArrayOutputStream b = new ByteArrayOutputStream();
 
 		try {
-			b.write(new VariableLengthIntegerMessage(addressVersion).getBytes());
-			b.write(new VariableLengthIntegerMessage(streamNumber).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(addressVersion).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(streamNumber).getBytes());
 			b.write(ripe);
 		} catch (IOException e) {
 			LOG.log(Level.SEVERE, "Could not write bytes!", e);

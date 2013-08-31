@@ -4,10 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,27 +19,10 @@ import sibbo.bitmessage.crypt.Digest;
  * 
  */
 public class BaseMessage {
-	private static final Logger LOG = Logger.getLogger(BaseMessage.class
-			.getName());
-
-	/** Stores the types that are used to parse the commands */
-	private static final HashMap<String, Class<? extends P2PMessage>> COMMANDS = new HashMap<>();
-
-	static {
-		COMMANDS.put(VersionMessage.COMMAND, VersionMessage.class);
-		COMMANDS.put(VerackMessage.COMMAND, VerackMessage.class);
-		COMMANDS.put(AddrMessage.COMMAND, AddrMessage.class);
-		COMMANDS.put(InvMessage.COMMAND, InvMessage.class);
-		COMMANDS.put(GetdataMessage.COMMAND, GetdataMessage.class);
-		COMMANDS.put(GetpubkeyMessage.COMMAND, GetpubkeyMessage.class);
-		COMMANDS.put(PubkeyMessage.COMMAND, PubkeyMessage.class);
-		COMMANDS.put(MsgMessage.COMMAND, MsgMessage.class);
-		COMMANDS.put(UnencryptedBroadcastMessage.COMMAND, UnencryptedBroadcastMessage.class);
-	}
+	private static final Logger LOG = Logger.getLogger(BaseMessage.class.getName());
 
 	/** Identifies the bitmessage protocol. */
-	private byte[] magic = new byte[] { (byte) 0xE9, (byte) 0xBE, (byte) 0xB4,
-			(byte) 0xD9 };
+	private byte[] magic = new byte[] { (byte) 0xE9, (byte) 0xBE, (byte) 0xB4, (byte) 0xD9 };
 
 	/** The command of the message. */
 	private String command;
@@ -56,13 +36,26 @@ public class BaseMessage {
 	/** The payload */
 	private P2PMessage payload;
 
+	/** The factory used to create other message objects. */
+	private MessageFactory factory;
+
+	private BaseMessage(MessageFactory factory) {
+		Objects.requireNonNull(factory, "'factory' must not be null.");
+
+		this.factory = factory;
+	}
+
 	/**
 	 * Constructs a new Message with the given parameters.
 	 * 
-	 * @param command A NULL-padded ASCII string with a length of 12.
-	 * @param payload The payload.
+	 * @param payload
+	 *            The payload.
+	 * @param factory
+	 *            The MessageFactory used to create other message objects.
 	 */
-	public BaseMessage(P2PMessage payload) {
+	public BaseMessage(P2PMessage payload, MessageFactory factory) {
+		this(factory);
+
 		Objects.requireNonNull(payload, "payload must not be null.");
 
 		this.payload = payload;
@@ -73,11 +66,16 @@ public class BaseMessage {
 	 * Creates a new base message, parsing the data from in. The message is
 	 * limited to maxLength.
 	 * 
-	 * @param in The input stream to read from.
-	 * @param maxLength The maximum amount of bytes to read from in.
+	 * @param in
+	 *            The input stream to read from.
+	 * @param maxLength
+	 *            The maximum amount of bytes to read from in.
+	 * @param factory
+	 *            The MessageFactory used to create other message objects.
 	 */
-	public BaseMessage(InputStream in, int maxLength) throws IOException,
-			ParsingException {
+	public BaseMessage(InputStream in, int maxLength, MessageFactory factory) throws IOException, ParsingException {
+		this(factory);
+
 		read(in, maxLength);
 	}
 
@@ -141,13 +139,11 @@ public class BaseMessage {
 		return b.toByteArray();
 	}
 
-	protected void read(InputStream in, int maxLength) throws IOException,
-			ParsingException {
+	protected void read(InputStream in, int maxLength) throws IOException, ParsingException {
 		InputBuffer buffer = new InputBuffer(in, 24, 24);
 
 		if (!Arrays.equals(magic, buffer.get(0, 4))) {
-			throw new ParsingException("Unknown magic bytes: "
-					+ Arrays.toString(buffer.get(0, 4)));
+			throw new ParsingException("Unknown magic bytes: " + Arrays.toString(buffer.get(0, 4)));
 		}
 
 		byte[] ascii = buffer.get(4, 12);
@@ -173,8 +169,7 @@ public class BaseMessage {
 		}
 
 		if (length > maxLength) {
-			throw new ParsingException("The payload is too long: " + length
-					+ " bytes");
+			throw new ParsingException("The payload is too long: " + length + " bytes");
 		}
 
 		int chunkSize = 1024;
@@ -191,46 +186,6 @@ public class BaseMessage {
 			throw new ParsingException("Wrong digest for payload!");
 		}
 
-		try {
-			Class<? extends P2PMessage> cPayload = getPayloadType(command);
-
-			if (cPayload == null) {
-				throw new ParsingException("Unknown command: " + command);
-			}
-
-			Constructor<? extends P2PMessage> constructor = cPayload
-					.getConstructor(InputBuffer.class);
-			payload = constructor.newInstance(buffer);
-		} catch (NoSuchMethodException e) {
-			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
-					+ " is missing a Constructor(InputBuffer)!", e);
-			System.exit(1);
-		} catch (InstantiationException e) {
-			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
-					+ " is abstract!", e);
-			System.exit(1);
-		} catch (IllegalAccessException e) {
-			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
-					+ " has an inaccessible Constructor(InputStream)!", e);
-			System.exit(1);
-		} catch (IllegalArgumentException e) {
-			LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
-					+ " caused an error!", e);
-			System.exit(1);
-		} catch (InvocationTargetException e) {
-			if (e.getCause() instanceof ParsingException) {
-				throw (ParsingException) e.getCause();
-			} else if (e.getCause() instanceof IOException) {
-				throw (IOException) e.getCause();
-			} else {
-				LOG.log(Level.SEVERE, "INTERNAL: The type bound to " + command
-						+ " caused an error!", e);
-				System.exit(1);
-			}
-		}
-	}
-
-	public Class<? extends P2PMessage> getPayloadType(String command) {
-		return COMMANDS.get(command);
+		payload = factory.parseP2PMessage(command, buffer);
 	}
 }

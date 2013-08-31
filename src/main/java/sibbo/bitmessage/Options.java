@@ -18,19 +18,20 @@ public class Options extends Properties {
 		defaults.setProperty("protocol.maxAddrLength", 1_000);
 		defaults.setProperty("protocol.services", 1);
 		defaults.setProperty("protocol.remoteServices", 1);
+		defaults.setProperty("protocol.version", 1); // TODO Change to 2 after
+														// implementation.
 		defaults.setProperty("pow.averageNonceTrialsPerByte", 320);
 		defaults.setProperty("pow.payloadLengthExtraBytes", 14_000);
 		defaults.setProperty("pow.systemLoad", 0.5f);
+		defaults.setProperty("pow.iterationfactor", 100);
 		defaults.setProperty("network.connectTimeout", 5_000);
 		defaults.setProperty("network.timeout", 10_000);
 		defaults.setProperty("network.listenPort", 8443);
 		defaults.setProperty("network.passiveMode.maxConnections", 8);
 		defaults.setProperty("network.activeMode.maxConnections", 16);
 		defaults.setProperty("network.activeMode.stopListenConnectionCount", 32);
-		defaults.setProperty(
-				"network.userAgent",
-				"/" + defaults.getString("global.name") + ":"
-						+ defaults.getString("global.version") + "/");
+		defaults.setProperty("network.userAgent",
+				"/" + defaults.getString("global.name") + ":" + defaults.getString("global.version") + "/");
 		defaults.setProperty("data.maxNodeStorageTime", 3600 * 3); // Seconds
 	}
 
@@ -44,16 +45,14 @@ public class Options extends Properties {
 		super(defaults);
 	}
 
-	public Object setProperty(String key, float value) {
-		return setProperty(key, String.valueOf(value));
-	}
-
-	public Object setProperty(String key, int value) {
-		return setProperty(key, String.valueOf(value));
-	}
-
-	public Object setProperty(String key, long value) {
-		return setProperty(key, String.valueOf(value));
+	public float getFloat(String key) {
+		try {
+			return Float.valueOf(getProperty(key));
+		} catch (NumberFormatException e) {
+			LOG.log(Level.SEVERE, "Not a float: " + getProperty(key), e);
+			System.exit(1);
+			return 0;
+		}
 	}
 
 	public int getInt(String key) {
@@ -66,18 +65,14 @@ public class Options extends Properties {
 		}
 	}
 
-	public float getFloat(String key) {
+	public long getLong(String key) {
 		try {
-			return Float.valueOf(getProperty(key));
+			return Long.valueOf(getProperty(key));
 		} catch (NumberFormatException e) {
-			LOG.log(Level.SEVERE, "Not a float: " + getProperty(key), e);
+			LOG.log(Level.SEVERE, "Not a long: " + getProperty(key), e);
 			System.exit(1);
 			return 0;
 		}
-	}
-
-	public String getString(String key) {
-		return getProperty(key);
 	}
 
 	@Override
@@ -91,13 +86,19 @@ public class Options extends Properties {
 		}
 	}
 
-	public long getLong(String key) {
-		try {
-			return Long.valueOf(getProperty(key));
-		} catch (NumberFormatException e) {
-			LOG.log(Level.SEVERE, "Not a long: " + getProperty(key), e);
-			System.exit(1);
-			return 0;
-		}
+	public String getString(String key) {
+		return getProperty(key);
+	}
+
+	public Object setProperty(String key, float value) {
+		return setProperty(key, String.valueOf(value));
+	}
+
+	public Object setProperty(String key, int value) {
+		return setProperty(key, String.valueOf(value));
+	}
+
+	public Object setProperty(String key, long value) {
+		return setProperty(key, String.valueOf(value));
 	}
 }

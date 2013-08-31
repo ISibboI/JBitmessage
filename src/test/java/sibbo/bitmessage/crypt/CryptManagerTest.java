@@ -14,6 +14,7 @@ import org.bouncycastle.jce.provider.JCEECPublicKey;
 import org.junit.Test;
 
 import sibbo.bitmessage.network.protocol.EncryptedMessage;
+import sibbo.bitmessage.network.protocol.V1MessageFactory;
 
 public class CryptManagerTest {
 	@Test
@@ -23,7 +24,8 @@ public class CryptManagerTest {
 		KeyPair key = CryptManager.getInstance().generateEncryptionKeyPair();
 		byte[] source = message.getBytes("UTF-8");
 
-		EncryptedMessage encrypted = CryptManager.getInstance().encrypt(source, (JCEECPublicKey) key.getPublic());
+		EncryptedMessage encrypted = CryptManager.getInstance().encrypt(source, (JCEECPublicKey) key.getPublic(),
+				new V1MessageFactory());
 
 		for (int i = 0; i < encrypted.getEncrypted().length; i++) {
 			if (i % 8 == 0)

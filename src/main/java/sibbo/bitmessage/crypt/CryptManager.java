@@ -3,6 +3,7 @@ package sibbo.bitmessage.crypt;
 import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -12,7 +13,7 @@ import java.security.SecureRandom;
 import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
-import java.security.spec.ECPublicKeySpec;
+import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -29,26 +30,22 @@ import org.bouncycastle.crypto.paddings.PaddedBufferedBlockCipher;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.crypto.params.ParametersWithIV;
 import org.bouncycastle.jce.ECNamedCurveTable;
-import org.bouncycastle.jce.provider.JCEECPrivateKey;
-import org.bouncycastle.jce.provider.JCEECPublicKey;
-import org.bouncycastle.jce.spec.ECParameterSpec;
+import org.bouncycastle.jce.interfaces.ECPrivateKey;
+import org.bouncycastle.jce.interfaces.ECPublicKey;
+import org.bouncycastle.jce.provider.asymmetric.ec.EC5Util;
+import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec;
+import org.bouncycastle.math.ec.ECCurve;
 import org.bouncycastle.math.ec.ECPoint;
 
 import sibbo.bitmessage.Options;
 import sibbo.bitmessage.network.protocol.EncryptedMessage;
+import sibbo.bitmessage.network.protocol.MessageFactory;
 import sibbo.bitmessage.network.protocol.Util;
 
 public final class CryptManager {
 	private static final Logger LOG = Logger.getLogger(CryptManager.class.getName());
 
 	public static CryptManager instance;
-
-	/**
-	 * Singleton.
-	 */
-	private CryptManager() {
-		initialize();
-	}
 
 	public static CryptManager getInstance() {
 		if (instance == null) {
@@ -59,70 +56,77 @@ public final class CryptManager {
 	}
 
 	private KeyPairGenerator kpg;
-	private ECParameterSpec ecGenSpec;
-	private java.security.spec.ECParameterSpec newECKeyParameters;
-
 	private KeyPairGenerator skpg;
-	private ECParameterSpec ecSigningGenSpec;
-	private java.security.spec.ECParameterSpec newECSigningKeyParameters;
 
-	public boolean initialize() {
-		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+	/**
+	 * Singleton.
+	 */
+	private CryptManager() {
+		initialize();
+	}
 
-		try {
-			kpg = KeyPairGenerator.getInstance("ECIES", "BC");
-			ecGenSpec = ECNamedCurveTable.getParameterSpec("secp256k1");
-			kpg.initialize(ecGenSpec, new SecureRandom());
-			newECKeyParameters = ((JCEECPublicKey) kpg.generateKeyPair().getPublic()).getParams();
+	public boolean checkMac(EncryptedMessage encrypted, ECPrivateKey key) {
+		ECPoint point = encrypted.getPublicKey().getQ().multiply(key.getD());
 
-			skpg = KeyPairGenerator.getInstance("ECDSA", "BC");
-			ecSigningGenSpec = ECNamedCurveTable.getParameterSpec("secp256k1");
-			skpg.initialize(ecSigningGenSpec, new SecureRandom());
-			newECSigningKeyParameters = ((JCEECPublicKey) skpg.generateKeyPair().getPublic()).getParams();
-		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException e) {
-			LOG.log(Level.SEVERE, "No ECIES cryptography available!", e);
-			return false;
-		}
+		byte[] tmpKey = Digest.sha512(Util.getUnsignedBytes(point.getX().toBigInteger(), 32));
+		byte[] key_m = Arrays.copyOfRange(tmpKey, 32, 64);
 
-		return true;
+		return Arrays.equals(encrypted.getMac(), Digest.hmacSHA256(encrypted.getEncrypted(), key_m));
 	}
 
 	/**
-	 * Checks if the given data was signed with the private key belonging to the
-	 * given public key.
+	 * Checks if the proof of work done for the given data is sufficient.
 	 * 
 	 * @param data
-	 *            The signed data.
-	 * @param signature
-	 *            The signature.
-	 * @param publicSigningKey
-	 *            The public signing key.
-	 * @return True if the signature is valid, false otherwise.
+	 *            The data.
+	 * @param nonce
+	 *            The POW nonce.
+	 * @return True if the pow is sufficient.
 	 */
-	public boolean verifySignature(byte[] data, byte[] signature, JCEECPublicKey publicSigningKey) {
-		try {
-			Signature sig = Signature.getInstance("ECDSA", "BC");
-			sig.initVerify(publicSigningKey);
-			sig.update(data);
+	public boolean checkPOW(byte[] data, byte[] nonce) {
+		byte[] initialHash = Digest.sha512(data);
+		byte[] hash = Digest.sha512(Digest.sha512(nonce, initialHash));
+		long value = Util.getLong(hash);
+		long target = getPOWTarget(data.length);
 
-			return sig.verify(signature);
-		} catch (NoSuchAlgorithmException | NoSuchProviderException | SignatureException | InvalidKeyException e) {
-			LOG.log(Level.SEVERE, "No ECDSA signing available.", e);
-			System.exit(1);
-			return false;
-		}
+		return value >= 0 && target >= value;
 	}
 
-	public byte[] sign(byte[] data, JCEECPrivateKey key) {
-		try {
-			Signature sig = Signature.getInstance("ECDSA", "BC");
-			sig.initSign(key, new SecureRandom());
-			sig.update(data);
+	/**
+	 * Creates a KeyPair containing only the given private key. The value of the
+	 * public key will be undefined.
+	 * 
+	 * @param privateEncryptionKey
+	 *            The private encryption key.
+	 * @return A KeyPair containing only the given private key.
+	 */
+	public KeyPair createKeyPairWithPrivateKey(PrivateKey key) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 
-			return sig.sign();
-		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | SignatureException e) {
-			LOG.log(Level.SEVERE, "No ECDSA signing available.", e);
-			System.exit(1);
+	/**
+	 * Creates a ECPublicKey with the given coordinates. The key will have valid
+	 * parameters.
+	 * 
+	 * @param x
+	 *            The x coordinate on the curve.
+	 * @param y
+	 *            The y coordinate on the curve.
+	 * @return A ECPublicKey with the given coordinates.
+	 */
+	public ECPublicKey createPublicEncryptionKey(BigInteger x, BigInteger y) {
+		try {
+			java.security.spec.ECPoint w = new java.security.spec.ECPoint(x, y);
+			ECNamedCurveParameterSpec params = ECNamedCurveTable.getParameterSpec("secp256k1");
+			KeyFactory fact = KeyFactory.getInstance("ECDSA", "BC");
+			ECCurve curve = params.getCurve();
+			java.security.spec.EllipticCurve ellipticCurve = EC5Util.convertCurve(curve, params.getSeed());
+			java.security.spec.ECParameterSpec params2 = EC5Util.convertSpec(ellipticCurve, params);
+			java.security.spec.ECPublicKeySpec keySpec = new java.security.spec.ECPublicKeySpec(w, params2);
+			return (ECPublicKey) fact.generatePublic(keySpec);
+		} catch (InvalidKeySpecException | NoSuchAlgorithmException | NoSuchProviderException e) {
+			LOG.log(Level.SEVERE, "Could not create public key.", e);
 			return null;
 		}
 	}
@@ -135,7 +139,7 @@ public final class CryptManager {
 	 * @return A KeyDataPair containing the key that was used for decryption and
 	 *         the decrypted data.
 	 */
-	public byte[] decrypt(EncryptedMessage encrypted, JCEECPrivateKey key) {
+	public byte[] decrypt(EncryptedMessage encrypted, ECPrivateKey key) {
 		ECPoint point = encrypted.getPublicKey().getQ().multiply(key.getD());
 
 		byte[] tmpKey = Digest.sha512(Util.getUnsignedBytes(point.getX().toBigInteger(), 32));
@@ -146,36 +150,15 @@ public final class CryptManager {
 		return plain;
 	}
 
-	public boolean checkMac(EncryptedMessage encrypted, JCEECPrivateKey key) {
-		ECPoint point = encrypted.getPublicKey().getQ().multiply(key.getD());
-
-		byte[] tmpKey = Digest.sha512(Util.getUnsignedBytes(point.getX().toBigInteger(), 32));
-		byte[] key_m = Arrays.copyOfRange(tmpKey, 32, 64);
-
-		return Arrays.equals(encrypted.getMac(), Digest.hmacSHA256(encrypted.getEncrypted(), key_m));
-	}
-
 	/**
-	 * Encrypts the given data using the attached private key.
+	 * Derives a 512 bit key from the given ECPoint.
 	 * 
-	 * @param plain
-	 *            The data and key.
-	 * @return The data encrypted with the given key.
+	 * @param p
+	 *            An ECPoint.
+	 * @return A 512 bit key.
 	 */
-	public EncryptedMessage encrypt(byte[] plain, JCEECPublicKey key) {
-		KeyPair random = generateEncryptionKeyPair();
-
-		ECPoint point = key.getQ().multiply(((JCEECPrivateKey) random.getPrivate()).getD());
-		byte[] tmpKey = deriveKey(point);
-		byte[] key_e = Arrays.copyOfRange(tmpKey, 0, 32);
-		byte[] key_m = Arrays.copyOfRange(tmpKey, 32, 64);
-		byte[] iv = new byte[16];
-		new SecureRandom().nextBytes(iv);
-
-		byte[] encrypted = doAES(key_e, iv, plain, true);
-		byte[] mac = Digest.hmacSHA256(encrypted, key_m);
-
-		return new EncryptedMessage(iv, (JCEECPublicKey) random.getPublic(), encrypted, mac);
+	private byte[] deriveKey(ECPoint p) {
+		return Digest.sha512(Util.getUnsignedBytes(p.getX().toBigInteger(), 32));
 	}
 
 	/**
@@ -213,32 +196,65 @@ public final class CryptManager {
 	}
 
 	/**
-	 * Derives a 512 bit key from the given ECPoint.
+	 * Does the POW for the given payload.<br />
+	 * <b>WARNING: Takes a long time!!!</b>
 	 * 
-	 * @param p
-	 *            An ECPoint.
-	 * @return A 512 bit key.
+	 * @param payload
+	 * @return
 	 */
-	private byte[] deriveKey(ECPoint p) {
-		return Digest.sha512(Util.getUnsignedBytes(p.getX().toBigInteger(), 32));
+	public byte[] doPOW(byte[] payload) {
+		POWCalculator pow = new POWCalculator(getPOWTarget(payload.length), Digest.sha512(payload), Options
+				.getInstance().getInt("pow.systemLoad"));
+		return pow.execute();
 	}
 
 	/**
-	 * Checks if the proof of work done for the given data is sufficient.
+	 * Encrypts the given data using the attached private key.
 	 * 
-	 * @param data
+	 * @param plain
 	 *            The data.
-	 * @param nonce
-	 *            The POW nonce.
-	 * @return True if the pow is sufficient.
+	 * @param key
+	 *            The key.
+	 * @param factory
+	 *            The factory used to create the EncryptedMessage object.
+	 * @return The data encrypted with the given key.
 	 */
-	public boolean checkPOW(byte[] data, byte[] nonce) {
-		byte[] initialHash = Digest.sha512(data);
-		byte[] hash = Digest.sha512(Digest.sha512(nonce, initialHash));
-		long value = Util.getLong(hash);
-		long target = getPOWTarget(data.length);
+	public EncryptedMessage encrypt(byte[] plain, ECPublicKey key, MessageFactory factory) {
+		KeyPair random = generateEncryptionKeyPair();
 
-		return value >= 0 && target >= value;
+		ECPoint point = key.getQ().multiply(((ECPrivateKey) random.getPrivate()).getD());
+		byte[] tmpKey = deriveKey(point);
+		byte[] key_e = Arrays.copyOfRange(tmpKey, 0, 32);
+		byte[] key_m = Arrays.copyOfRange(tmpKey, 32, 64);
+		byte[] iv = new byte[16];
+		new SecureRandom().nextBytes(iv);
+
+		byte[] encrypted = doAES(key_e, iv, plain, true);
+		byte[] mac = Digest.hmacSHA256(encrypted, key_m);
+
+		return factory.createEncryptedMessage(iv, (ECPublicKey) random.getPublic(), encrypted, mac);
+	}
+
+	/**
+	 * Generates a new random ECIES key pair.
+	 * 
+	 * @return A new random ECIES key pair.
+	 */
+	public KeyPair generateEncryptionKeyPair() {
+		synchronized (kpg) {
+			return kpg.generateKeyPair();
+		}
+	}
+
+	/**
+	 * Generates a new random ECDSA key pair.
+	 * 
+	 * @return A new random ECDSA key pair.
+	 */
+	public KeyPair generateSigningKeyPair() {
+		synchronized (skpg) {
+			return skpg.generateKeyPair();
+		}
 	}
 
 	/**
@@ -263,72 +279,60 @@ public final class CryptManager {
 		return powTarget.longValue();
 	}
 
-	/**
-	 * Does the POW for the given payload.<br />
-	 * <b>WARNING: Takes a long time!!!</b>
-	 * 
-	 * @param payload
-	 * @return
-	 */
-	public byte[] doPOW(byte[] payload) {
-		POWCalculator pow = new POWCalculator(getPOWTarget(payload.length), Digest.sha512(payload), Options
-				.getInstance().getInt("pow.systemLoad"));
-		return pow.execute();
+	public boolean initialize() {
+		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+
+		try {
+			kpg = KeyPairGenerator.getInstance("ECIES", "BC");
+			kpg.initialize(ECNamedCurveTable.getParameterSpec("secp256k1"), new SecureRandom());
+
+			skpg = KeyPairGenerator.getInstance("ECDSA", "BC");
+			skpg.initialize(ECNamedCurveTable.getParameterSpec("secp256k1"), new SecureRandom());
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException e) {
+			LOG.log(Level.SEVERE, "No ECIES cryptography available!", e);
+			return false;
+		}
+
+		return true;
 	}
 
-	/**
-	 * Creates a KeyPair containing only the given private key. The value of the
-	 * public key will be undefined.
-	 * 
-	 * @param privateEncryptionKey
-	 *            The private encryption key.
-	 * @return A KeyPair containing only the given private key.
-	 */
-	public KeyPair createKeyPairWithPrivateKey(PrivateKey key) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+	public byte[] sign(byte[] data, ECPrivateKey key) {
+		try {
+			Signature sig = Signature.getInstance("ECDSA", "BC");
+			sig.initSign(key, new SecureRandom());
+			sig.update(data);
 
-	/**
-	 * Generates a new random ECIES key pair.
-	 * 
-	 * @return A new random ECIES key pair.
-	 */
-	public KeyPair generateEncryptionKeyPair() {
-		synchronized (kpg) {
-			return kpg.generateKeyPair();
+			return sig.sign();
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | SignatureException e) {
+			LOG.log(Level.SEVERE, "No ECDSA signing available.", e);
+			System.exit(1);
+			return null;
 		}
 	}
 
 	/**
-	 * Creates a JCEECPublicKey with the given coordinates. The key will have
-	 * valid parameters.
+	 * Checks if the given data was signed with the private key belonging to the
+	 * given public key.
 	 * 
-	 * @param x
-	 *            The x coordinate on the curve.
-	 * @param y
-	 *            The y coordinate on the curve.
-	 * @return A JCEECPublicKey with the given coordinates.
+	 * @param data
+	 *            The signed data.
+	 * @param signature
+	 *            The signature.
+	 * @param publicSigningKey
+	 *            The public signing key.
+	 * @return True if the signature is valid, false otherwise.
 	 */
-	public JCEECPublicKey createPublicEncryptionKey(BigInteger x, BigInteger y) {
-		java.security.spec.ECPoint w = new java.security.spec.ECPoint(x, y);
-		/*
-		 * ECPoint . Fp ( ecGenSpec . getCurve ( ) , new ECFieldElement . Fp ( (
-		 * ( ECCurve . Fp ) ecGenSpec . getCurve ( ) ) . getQ ( ) , x ) , new
-		 * ECFieldElement . Fp ( ( ( ECCurve . Fp ) ecGenSpec . getCurve ( ) ) .
-		 * getQ ( ) , y ) ) ;
-		 */
-		return new JCEECPublicKey("ECDH", new ECPublicKeySpec(w, newECKeyParameters));
-	}
+	public boolean verifySignature(byte[] data, byte[] signature, ECPublicKey publicSigningKey) {
+		try {
+			Signature sig = Signature.getInstance("ECDSA", "BC");
+			sig.initVerify(publicSigningKey);
+			sig.update(data);
 
-	/**
-	 * Generates a new random ECDSA key pair.
-	 * 
-	 * @return A new random ECDSA key pair.
-	 */
-	public KeyPair generateSigningKeyPair() {
-		synchronized (skpg) {
-			return skpg.generateKeyPair();
+			return sig.verify(signature);
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | SignatureException | InvalidKeyException e) {
+			LOG.log(Level.SEVERE, "No ECDSA signing available.", e);
+			System.exit(1);
+			return false;
 		}
 	}
 }

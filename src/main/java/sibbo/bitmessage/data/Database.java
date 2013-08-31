@@ -19,19 +19,20 @@ public class Database {
 	 * one. Note that the user used for connecting must have the rights to
 	 * create a new database if it is not already created.
 	 * 
-	 * @param path The name of the database.
+	 * @param path
+	 *            The name of the database.
 	 */
 	public Database(String name) {
 		// TODO Auto-generated constructor stub
 	}
 
-	private static final Logger LOG = Logger
-			.getLogger(Database.class.getName());
+	private static final Logger LOG = Logger.getLogger(Database.class.getName());
 
 	/**
 	 * Reads the object with the given hash from the database.
 	 * 
-	 * @param m The hash.
+	 * @param m
+	 *            The hash.
 	 * @return The object with the given hash or null, if there is no object
 	 *         with the given hash.
 	 */
