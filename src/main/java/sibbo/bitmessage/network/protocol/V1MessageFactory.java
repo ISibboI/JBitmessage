@@ -7,7 +7,7 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.logging.Logger;
 
-import org.bouncycastle.jce.provider.JCEECPublicKey;
+import org.bouncycastle.jce.interfaces.ECPublicKey;
 
 public class V1MessageFactory extends MessageFactory {
 	private static final Logger LOG = Logger.getLogger(V1MessageFactory.class.getName());
@@ -23,7 +23,7 @@ public class V1MessageFactory extends MessageFactory {
 	}
 
 	@Override
-	public EncryptedMessage createEncryptedMessage(byte[] iv, JCEECPublicKey key, byte[] encrypted, byte[] mac) {
+	public EncryptedMessage createEncryptedMessage(byte[] iv, ECPublicKey key, byte[] encrypted, byte[] mac) {
 		return new EncryptedMessage(iv, key, encrypted, mac, this);
 	}
 

@@ -11,7 +11,7 @@ import java.util.logging.Logger;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.bouncycastle.jce.provider.JCEECPublicKey;
+import org.bouncycastle.jce.interfaces.ECPublicKey;
 
 import sibbo.bitmessage.network.protocol.Util;
 
@@ -24,30 +24,56 @@ import sibbo.bitmessage.network.protocol.Util;
 public final class Digest {
 	private static final Logger LOG = Logger.getLogger(Digest.class.getName());
 
-	/** Utility class */
-	private Digest() {
+	/**
+	 * Calculates the HmacSHA256 from the given key and data.
+	 * 
+	 * @param data
+	 *            The data.
+	 * @param key
+	 *            The key.
+	 * @return The HmacSHA256.
+	 */
+	public static byte[] hmacSHA256(byte[] data, byte[] key) {
+		try {
+			Mac mac = Mac.getInstance("HmacSHA256", "BC");
+			mac.init(new SecretKeySpec(key, "HmacSHA256"));
+			return mac.doFinal(data);
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException e) {
+			LOG.log(Level.SEVERE, "Could not generate HMAC.", e);
+			System.exit(1);
+			return null;
+		}
 	}
 
 	/**
-	 * Returns the first {@code digestLength} bytes of the sha512 sum of
-	 * {@code bytes}.
+	 * Calculates the digest of the given key pair.
 	 * 
-	 * @param bytes
-	 *            The input for sha512.
-	 * @param digestLength
-	 *            The number of bytes to return.
-	 * @return The first {@code digestLength} bytes of the sha512 sum of
-	 *         {@code bytes}..
+	 * @param publicSigningKey
+	 *            The public signing key.
+	 * @param publicEncryptionKey
+	 *            The public encryption key.
+	 * @return The digest of the given key pair.
 	 */
-	public static byte[] sha512(byte[] bytes, int digestLength) {
-		MessageDigest sha512;
+	public static byte[] keyDigest(ECPublicKey publicSigningKey, ECPublicKey publicEncryptionKey) {
+		return ripemd160(sha512(Util.getBytes(publicSigningKey), Util.getBytes(publicEncryptionKey)));
+	}
+
+	/**
+	 * Returns the ripemd160 sum of the given data.
+	 * 
+	 * @param data
+	 *            The data.
+	 * @return The ripemd160 sum of the given data.
+	 */
+	public static byte[] ripemd160(byte[] data) {
+		MessageDigest ripemd160;
 
 		try {
-			sha512 = MessageDigest.getInstance("SHA-512");
-			byte[] sum = sha512.digest(bytes);
-			return Arrays.copyOf(sum, digestLength);
+			ripemd160 = MessageDigest.getInstance("ripemd160");
+
+			return ripemd160.digest(data);
 		} catch (NoSuchAlgorithmException e) {
-			LOG.log(Level.SEVERE, "SHA-512 not supported!", e);
+			LOG.log(Level.SEVERE, "ripemd160 not supported!", e);
 			System.exit(1);
 			return null;
 		}
@@ -90,57 +116,31 @@ public final class Digest {
 	}
 
 	/**
-	 * Returns the ripemd160 sum of the given data.
+	 * Returns the first {@code digestLength} bytes of the sha512 sum of
+	 * {@code bytes}.
 	 * 
-	 * @param data
-	 *            The data.
-	 * @return The ripemd160 sum of the given data.
+	 * @param bytes
+	 *            The input for sha512.
+	 * @param digestLength
+	 *            The number of bytes to return.
+	 * @return The first {@code digestLength} bytes of the sha512 sum of
+	 *         {@code bytes}..
 	 */
-	public static byte[] ripemd160(byte[] data) {
-		MessageDigest ripemd160;
+	public static byte[] sha512(byte[] bytes, int digestLength) {
+		MessageDigest sha512;
 
 		try {
-			ripemd160 = MessageDigest.getInstance("ripemd160");
-
-			return ripemd160.digest(data);
+			sha512 = MessageDigest.getInstance("SHA-512");
+			byte[] sum = sha512.digest(bytes);
+			return Arrays.copyOf(sum, digestLength);
 		} catch (NoSuchAlgorithmException e) {
-			LOG.log(Level.SEVERE, "ripemd160 not supported!", e);
+			LOG.log(Level.SEVERE, "SHA-512 not supported!", e);
 			System.exit(1);
 			return null;
 		}
 	}
 
-	/**
-	 * Calculates the digest of the given key pair.
-	 * 
-	 * @param publicSigningKey
-	 *            The public signing key.
-	 * @param publicEncryptionKey
-	 *            The public encryption key.
-	 * @return The digest of the given key pair.
-	 */
-	public static byte[] keyDigest(JCEECPublicKey publicSigningKey, JCEECPublicKey publicEncryptionKey) {
-		return ripemd160(sha512(Util.getBytes(publicSigningKey), Util.getBytes(publicEncryptionKey)));
-	}
-
-	/**
-	 * Calculates the HmacSHA256 from the given key and data.
-	 * 
-	 * @param data
-	 *            The data.
-	 * @param key
-	 *            The key.
-	 * @return The HmacSHA256.
-	 */
-	public static byte[] hmacSHA256(byte[] data, byte[] key) {
-		try {
-			Mac mac = Mac.getInstance("HmacSHA256", "BC");
-			mac.init(new SecretKeySpec(key, "HmacSHA256"));
-			return mac.doFinal(data);
-		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException e) {
-			LOG.log(Level.SEVERE, "Could not generate HMAC.", e);
-			System.exit(1);
-			return null;
-		}
+	/** Utility class */
+	private Digest() {
 	}
 }

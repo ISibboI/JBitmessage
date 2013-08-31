@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.bouncycastle.jce.provider.JCEECPublicKey;
+import org.bouncycastle.jce.interfaces.ECPublicKey;
 
 import sibbo.bitmessage.crypt.BMAddress;
 import sibbo.bitmessage.crypt.CryptManager;
@@ -33,10 +33,10 @@ public class UnencryptedMsgMessage extends Message {
 	private BehaviorMessage behavior;
 
 	/** The ECC public key of the sender used for signing. */
-	private JCEECPublicKey publicSigningKey;
+	private ECPublicKey publicSigningKey;
 
 	/** The ECC public key of the sender used for encryption. */
-	private JCEECPublicKey publicEncryptionKey;
+	private ECPublicKey publicEncryptionKey;
 
 	/** The ripe hash of the public key of the receiver of the message. */
 	private byte[] destinationRipe;
@@ -49,6 +49,13 @@ public class UnencryptedMsgMessage extends Message {
 
 	/** The ECDSA signature */
 	private byte[] signature;
+
+	/**
+	 * {@link Message#Message(InputBuffer, MessageFactory)}
+	 */
+	public UnencryptedMsgMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
+		super(b, factory);
+	}
 
 	/**
 	 * Creates a new unencrypted message data message with the given parameters.
@@ -71,8 +78,8 @@ public class UnencryptedMsgMessage extends Message {
 	 *            The acknowledgment message.
 	 */
 	public UnencryptedMsgMessage(long addressVersion, long stream, BehaviorMessage behavior,
-			JCEECPublicKey publicSigningKey, JCEECPublicKey publicEncryptionKey, byte[] destinationRipe,
-			MailMessage message, BaseMessage acknowledgment, MessageFactory factory) {
+			ECPublicKey publicSigningKey, ECPublicKey publicEncryptionKey, byte[] destinationRipe, MailMessage message,
+			BaseMessage acknowledgment, MessageFactory factory) {
 		super(factory);
 
 		this.addressVersion = addressVersion;
@@ -85,11 +92,76 @@ public class UnencryptedMsgMessage extends Message {
 		this.acknowledgment = acknowledgment;
 	}
 
-	/**
-	 * {@link Message#Message(InputBuffer, MessageFactory)}
-	 */
-	public UnencryptedMsgMessage(InputBuffer b, MessageFactory factory) throws IOException, ParsingException {
-		super(b, factory);
+	public BaseMessage getAcknowledgment() {
+		return acknowledgment;
+	}
+
+	public long getAddressVersion() {
+		return addressVersion;
+	}
+
+	public BehaviorMessage getBehavior() {
+		return behavior;
+	}
+
+	@Override
+	public byte[] getBytes() {
+		ByteArrayOutputStream b = new ByteArrayOutputStream();
+
+		try {
+			b.write(getBytesWithoutSignature());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(signature.length).getBytes());
+			b.write(signature);
+		} catch (IOException e) {
+			LOG.log(Level.SEVERE, "Could not write bytes!", e);
+			System.exit(1);
+		}
+
+		return b.toByteArray();
+	}
+
+	private byte[] getBytesWithoutSignature() {
+		ByteArrayOutputStream b = new ByteArrayOutputStream();
+
+		try {
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(MESSAGE_VERSION).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(addressVersion).getBytes());
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(stream).getBytes());
+			b.write(behavior.getBytes());
+			b.write(Util.getBytes(publicSigningKey));
+			b.write(Util.getBytes(publicEncryptionKey));
+			b.write(destinationRipe);
+			b.write(message.getBytes());
+
+			byte[] ack = acknowledgment.getBytes();
+			b.write(getMessageFactory().createVariableLengthIntegerMessage(ack.length).getBytes());
+			b.write(ack);
+		} catch (IOException e) {
+			LOG.log(Level.SEVERE, "Could not write bytes!", e);
+			System.exit(1);
+		}
+
+		return b.toByteArray();
+	}
+
+	public byte[] getDestinationRipe() {
+		return destinationRipe;
+	}
+
+	public MailMessage getMessage() {
+		return message;
+	}
+
+	public ECPublicKey getPublicEncryptionKey() {
+		return publicEncryptionKey;
+	}
+
+	public ECPublicKey getPublicSigningKey() {
+		return publicSigningKey;
+	}
+
+	public long getStream() {
+		return stream;
 	}
 
 	@Override
@@ -154,77 +226,5 @@ public class UnencryptedMsgMessage extends Message {
 				publicSigningKey)) {
 			throw new ParsingException("Wrong signature.");
 		}
-	}
-
-	private byte[] getBytesWithoutSignature() {
-		ByteArrayOutputStream b = new ByteArrayOutputStream();
-
-		try {
-			b.write(getMessageFactory().createVariableLengthIntegerMessage(MESSAGE_VERSION).getBytes());
-			b.write(getMessageFactory().createVariableLengthIntegerMessage(addressVersion).getBytes());
-			b.write(getMessageFactory().createVariableLengthIntegerMessage(stream).getBytes());
-			b.write(behavior.getBytes());
-			b.write(Util.getBytes(publicSigningKey));
-			b.write(Util.getBytes(publicEncryptionKey));
-			b.write(destinationRipe);
-			b.write(message.getBytes());
-
-			byte[] ack = acknowledgment.getBytes();
-			b.write(getMessageFactory().createVariableLengthIntegerMessage(ack.length).getBytes());
-			b.write(ack);
-		} catch (IOException e) {
-			LOG.log(Level.SEVERE, "Could not write bytes!", e);
-			System.exit(1);
-		}
-
-		return b.toByteArray();
-	}
-
-	@Override
-	public byte[] getBytes() {
-		ByteArrayOutputStream b = new ByteArrayOutputStream();
-
-		try {
-			b.write(getBytesWithoutSignature());
-			b.write(getMessageFactory().createVariableLengthIntegerMessage(signature.length).getBytes());
-			b.write(signature);
-		} catch (IOException e) {
-			LOG.log(Level.SEVERE, "Could not write bytes!", e);
-			System.exit(1);
-		}
-
-		return b.toByteArray();
-	}
-
-	public long getAddressVersion() {
-		return addressVersion;
-	}
-
-	public long getStream() {
-		return stream;
-	}
-
-	public BehaviorMessage getBehavior() {
-		return behavior;
-	}
-
-	public JCEECPublicKey getPublicSigningKey() {
-		return publicSigningKey;
-	}
-
-	public JCEECPublicKey getPublicEncryptionKey() {
-		return publicEncryptionKey;
-	}
-
-	public byte[] getDestinationRipe() {
-		return destinationRipe;
-	}
-
-	public MailMessage getMessage() {
-		return message;
-	}
-
-	public BaseMessage getAcknowledgment() {
-		return acknowledgment;
 	}
 }

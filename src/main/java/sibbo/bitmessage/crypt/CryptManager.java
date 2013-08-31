@@ -3,6 +3,7 @@ package sibbo.bitmessage.crypt;
 import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -12,7 +13,7 @@ import java.security.SecureRandom;
 import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
-import java.security.spec.ECPublicKeySpec;
+import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -29,9 +30,11 @@ import org.bouncycastle.crypto.paddings.PaddedBufferedBlockCipher;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.crypto.params.ParametersWithIV;
 import org.bouncycastle.jce.ECNamedCurveTable;
-import org.bouncycastle.jce.provider.JCEECPrivateKey;
-import org.bouncycastle.jce.provider.JCEECPublicKey;
-import org.bouncycastle.jce.spec.ECParameterSpec;
+import org.bouncycastle.jce.interfaces.ECPrivateKey;
+import org.bouncycastle.jce.interfaces.ECPublicKey;
+import org.bouncycastle.jce.provider.asymmetric.ec.EC5Util;
+import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec;
+import org.bouncycastle.math.ec.ECCurve;
 import org.bouncycastle.math.ec.ECPoint;
 
 import sibbo.bitmessage.Options;
@@ -53,13 +56,7 @@ public final class CryptManager {
 	}
 
 	private KeyPairGenerator kpg;
-
-	private ECParameterSpec ecGenSpec;
-	private java.security.spec.ECParameterSpec newECKeyParameters;
 	private KeyPairGenerator skpg;
-
-	private ECParameterSpec ecSigningGenSpec;
-	private java.security.spec.ECParameterSpec newECSigningKeyParameters;
 
 	/**
 	 * Singleton.
@@ -68,7 +65,7 @@ public final class CryptManager {
 		initialize();
 	}
 
-	public boolean checkMac(EncryptedMessage encrypted, JCEECPrivateKey key) {
+	public boolean checkMac(EncryptedMessage encrypted, ECPrivateKey key) {
 		ECPoint point = encrypted.getPublicKey().getQ().multiply(key.getD());
 
 		byte[] tmpKey = Digest.sha512(Util.getUnsignedBytes(point.getX().toBigInteger(), 32));
@@ -109,24 +106,29 @@ public final class CryptManager {
 	}
 
 	/**
-	 * Creates a JCEECPublicKey with the given coordinates. The key will have
-	 * valid parameters.
+	 * Creates a ECPublicKey with the given coordinates. The key will have valid
+	 * parameters.
 	 * 
 	 * @param x
 	 *            The x coordinate on the curve.
 	 * @param y
 	 *            The y coordinate on the curve.
-	 * @return A JCEECPublicKey with the given coordinates.
+	 * @return A ECPublicKey with the given coordinates.
 	 */
-	public JCEECPublicKey createPublicEncryptionKey(BigInteger x, BigInteger y) {
-		java.security.spec.ECPoint w = new java.security.spec.ECPoint(x, y);
-		/*
-		 * ECPoint . Fp ( ecGenSpec . getCurve ( ) , new ECFieldElement . Fp ( (
-		 * ( ECCurve . Fp ) ecGenSpec . getCurve ( ) ) . getQ ( ) , x ) , new
-		 * ECFieldElement . Fp ( ( ( ECCurve . Fp ) ecGenSpec . getCurve ( ) ) .
-		 * getQ ( ) , y ) ) ;
-		 */
-		return new JCEECPublicKey("ECDH", new ECPublicKeySpec(w, newECKeyParameters));
+	public ECPublicKey createPublicEncryptionKey(BigInteger x, BigInteger y) {
+		try {
+			java.security.spec.ECPoint w = new java.security.spec.ECPoint(x, y);
+			ECNamedCurveParameterSpec params = ECNamedCurveTable.getParameterSpec("secp256k1");
+			KeyFactory fact = KeyFactory.getInstance("ECDSA", "BC");
+			ECCurve curve = params.getCurve();
+			java.security.spec.EllipticCurve ellipticCurve = EC5Util.convertCurve(curve, params.getSeed());
+			java.security.spec.ECParameterSpec params2 = EC5Util.convertSpec(ellipticCurve, params);
+			java.security.spec.ECPublicKeySpec keySpec = new java.security.spec.ECPublicKeySpec(w, params2);
+			return (ECPublicKey) fact.generatePublic(keySpec);
+		} catch (InvalidKeySpecException | NoSuchAlgorithmException | NoSuchProviderException e) {
+			LOG.log(Level.SEVERE, "Could not create public key.", e);
+			return null;
+		}
 	}
 
 	/**
@@ -137,7 +139,7 @@ public final class CryptManager {
 	 * @return A KeyDataPair containing the key that was used for decryption and
 	 *         the decrypted data.
 	 */
-	public byte[] decrypt(EncryptedMessage encrypted, JCEECPrivateKey key) {
+	public byte[] decrypt(EncryptedMessage encrypted, ECPrivateKey key) {
 		ECPoint point = encrypted.getPublicKey().getQ().multiply(key.getD());
 
 		byte[] tmpKey = Digest.sha512(Util.getUnsignedBytes(point.getX().toBigInteger(), 32));
@@ -217,10 +219,10 @@ public final class CryptManager {
 	 *            The factory used to create the EncryptedMessage object.
 	 * @return The data encrypted with the given key.
 	 */
-	public EncryptedMessage encrypt(byte[] plain, JCEECPublicKey key, MessageFactory factory) {
+	public EncryptedMessage encrypt(byte[] plain, ECPublicKey key, MessageFactory factory) {
 		KeyPair random = generateEncryptionKeyPair();
 
-		ECPoint point = key.getQ().multiply(((JCEECPrivateKey) random.getPrivate()).getD());
+		ECPoint point = key.getQ().multiply(((ECPrivateKey) random.getPrivate()).getD());
 		byte[] tmpKey = deriveKey(point);
 		byte[] key_e = Arrays.copyOfRange(tmpKey, 0, 32);
 		byte[] key_m = Arrays.copyOfRange(tmpKey, 32, 64);
@@ -230,7 +232,7 @@ public final class CryptManager {
 		byte[] encrypted = doAES(key_e, iv, plain, true);
 		byte[] mac = Digest.hmacSHA256(encrypted, key_m);
 
-		return factory.createEncryptedMessage(iv, (JCEECPublicKey) random.getPublic(), encrypted, mac);
+		return factory.createEncryptedMessage(iv, (ECPublicKey) random.getPublic(), encrypted, mac);
 	}
 
 	/**
@@ -282,14 +284,10 @@ public final class CryptManager {
 
 		try {
 			kpg = KeyPairGenerator.getInstance("ECIES", "BC");
-			ecGenSpec = ECNamedCurveTable.getParameterSpec("secp256k1");
-			kpg.initialize(ecGenSpec, new SecureRandom());
-			newECKeyParameters = ((JCEECPublicKey) kpg.generateKeyPair().getPublic()).getParams();
+			kpg.initialize(ECNamedCurveTable.getParameterSpec("secp256k1"), new SecureRandom());
 
 			skpg = KeyPairGenerator.getInstance("ECDSA", "BC");
-			ecSigningGenSpec = ECNamedCurveTable.getParameterSpec("secp256k1");
-			skpg.initialize(ecSigningGenSpec, new SecureRandom());
-			newECSigningKeyParameters = ((JCEECPublicKey) skpg.generateKeyPair().getPublic()).getParams();
+			skpg.initialize(ECNamedCurveTable.getParameterSpec("secp256k1"), new SecureRandom());
 		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException e) {
 			LOG.log(Level.SEVERE, "No ECIES cryptography available!", e);
 			return false;
@@ -298,7 +296,7 @@ public final class CryptManager {
 		return true;
 	}
 
-	public byte[] sign(byte[] data, JCEECPrivateKey key) {
+	public byte[] sign(byte[] data, ECPrivateKey key) {
 		try {
 			Signature sig = Signature.getInstance("ECDSA", "BC");
 			sig.initSign(key, new SecureRandom());
@@ -324,7 +322,7 @@ public final class CryptManager {
 	 *            The public signing key.
 	 * @return True if the signature is valid, false otherwise.
 	 */
-	public boolean verifySignature(byte[] data, byte[] signature, JCEECPublicKey publicSigningKey) {
+	public boolean verifySignature(byte[] data, byte[] signature, ECPublicKey publicSigningKey) {
 		try {
 			Signature sig = Signature.getInstance("ECDSA", "BC");
 			sig.initVerify(publicSigningKey);

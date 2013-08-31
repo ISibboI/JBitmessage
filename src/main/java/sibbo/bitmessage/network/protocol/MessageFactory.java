@@ -5,7 +5,7 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.util.Collection;
 
-import org.bouncycastle.jce.provider.JCEECPublicKey;
+import org.bouncycastle.jce.interfaces.ECPublicKey;
 
 public abstract class MessageFactory {
 	/**
@@ -29,7 +29,7 @@ public abstract class MessageFactory {
 
 	public abstract BaseMessage createBaseMessage(P2PMessage message);
 
-	public abstract EncryptedMessage createEncryptedMessage(byte[] iv, JCEECPublicKey key, byte[] encrypted, byte[] mac);
+	public abstract EncryptedMessage createEncryptedMessage(byte[] iv, ECPublicKey key, byte[] encrypted, byte[] mac);
 
 	public abstract GetdataMessage createGetdataMessage(Collection<InventoryVectorMessage> inv);
 
